@@ -1,0 +1,11 @@
+version: "0.2"
+ignorePaths: []
+dictionaryDefinitions:
+  - name: czkawka
+    path: ./.github/config/czkawka.dict
+    addWords: true
+dictionaries:
+  - czkawka
+words: []
+ignoreWords: []
+import: []
