@@ -30,6 +30,7 @@ Krokiet
 libepoxy
 libheif
 libraw
+lockfiles
 Mikrut
 msbuild
 MSBUILD
@@ -62,6 +63,7 @@ Slint
 subprojects
 TASKFILE
 Ubunlog
+USERPROFILE
 vcpkg
 VCPKG
 webp
