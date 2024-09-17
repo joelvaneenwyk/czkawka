@@ -12,8 +12,8 @@ repository = "https://github.com/qarmin/czkawka"
 [dependencies]
 glib = "0.20.3"
 # gtk4 = { version = "0.8", default-features = false, features = ["v4_6"] }
-gtk4 = { version = "0.9.1", default-features = false, features = ["v4_8"] }
-# gtk = { git = "https://github.com/gtk-rs/gtk4-rs.git", package = "gtk4" }
+# gtk4 = { version = "0.9.1", default-features = false, features = ["v4_8"] }
+gtk = { git = "https://github.com/joelvaneenwyk/gtk4-rs.git", package = "gtk4" }
 
 humansize = "2.1"
 chrono = "0.4.34"
