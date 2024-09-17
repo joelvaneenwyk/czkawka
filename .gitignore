@@ -22,3 +22,13 @@ krokiet/target
 perf.data
 perf.data.old
 krokiet/ui/test.slint
+
+# pixi environments
+.pixi
+*.egg-info
+
+# Czkawka
+.build/
+.cspell/
+.git/
+.venv/
