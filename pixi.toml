@@ -1,0 +1,12 @@
+[project]
+authors = ["Joel Van Eenwyk <joel.vaneenwyk@gmail.com>"]
+channels = ["conda-forge"]
+description = "Add a short description here"
+name = "czkawka"
+platforms = ["win-64"]
+version = "0.1.0"
+
+[tasks]
+
+[dependencies]
+gtk4 = ">=4.12.1,<5"
