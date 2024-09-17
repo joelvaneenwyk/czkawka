@@ -72,9 +72,21 @@ env:
 tasks:
   default:
     cmds:
-      - task: gtk-build
+      - task: czkawka-build
+      # - task: gtk-build
       # - task: meson-build
 
+  czkawka-build:
+    cmds:
+      - cmd: rye sync
+      - cmd: |
+          rye run gvsbuild \
+            build gtk4 \
+            --verbose \
+            --from-scratch \
+            --build-dir .build/gtk4 \
+            --msys-dir "$USERPROFILE/scoop/apps/msys2/current"
+      - cmd: rye run cargo build
   meson-clean:
     cmds:
       - task: delete
