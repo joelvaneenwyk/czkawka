@@ -17,17 +17,17 @@ files from your computer.
 - No spying - Czkawka does not have access to the Internet, nor does it collect any user information or statistics
 - Multilingual - support multiple languages like Polish, English or Italian
 - Multiple tools to use:
-    - Duplicates - Finds duplicates based on file name, size or hash
-    - Empty Folders - Finds empty folders with the help of an advanced algorithm
-    - Big Files - Finds the provided number of the biggest files in given location
-    - Empty Files - Looks for empty files across the drive
-    - Temporary Files - Finds temporary files
-    - Similar Images - Finds images which are not exactly the same (different resolution, watermarks)
-    - Similar Videos - Looks for visually similar videos
-    - Same Music - Searches for similar music by tags or by reading content and comparing it
-    - Invalid Symbolic Links - Shows symbolic links which point to non-existent files/directories
-    - Broken Files - Finds files that are invalid or corrupted
-    - Bad Extensions - Lists files whose content not match with their extension
+  - Duplicates - Finds duplicates based on file name, size or hash
+  - Empty Folders - Finds empty folders with the help of an advanced algorithm
+  - Big Files - Finds the provided number of the biggest files in given location
+  - Empty Files - Looks for empty files across the drive
+  - Temporary Files - Finds temporary files
+  - Similar Images - Finds images which are not exactly the same (different resolution, watermarks)
+  - Similar Videos - Looks for visually similar videos
+  - Same Music - Searches for similar music by tags or by reading content and comparing it
+  - Invalid Symbolic Links - Shows symbolic links which point to non-existent files/directories
+  - Broken Files - Finds files that are invalid or corrupted
+  - Bad Extensions - Lists files whose content not match with their extension
 
 ![Czkawka](https://user-images.githubusercontent.com/41945903/145280350-506f7e94-4db0-4de7-a68d-6e7c26bbd2bf.gif)
 
