@@ -78,7 +78,7 @@ tasks:
 
   czkawka-build:
     cmds:
-      - cmd: rye sync
+      - cmd: rye sync --locked
       - cmd: |
           rye run gvsbuild \
             build gtk4 \
@@ -86,7 +86,9 @@ tasks:
             --from-scratch \
             --build-dir .build/gtk4 \
             --msys-dir "$USERPROFILE/scoop/apps/msys2/current"
-      - cmd: rye run cargo build
+      - cmd: |
+          cmd.exe /D /C \
+            ""{{ joinPath .TASKFILE_DIR ".venv" "Scripts" "activate.bat" | shellQuote }}" && pixi run cargo build"
   meson-clean:
     cmds:
       - task: delete
