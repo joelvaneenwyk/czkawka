@@ -26,6 +26,7 @@ dev-dependencies = [
     "pyright>=1.1.380",
     "pylint>=3.2.7",
     "mypy>=1.11.2",
+    "gvsbuild>=2024.9.0",
 ]
 
 [tool.hatch.metadata]
@@ -33,3 +34,15 @@ allow-direct-references = true
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/czkawka"]
+
+[tool.pixi.project]
+channels = ["conda-forge"]
+platforms = ["win-64"]
+
+[tool.pixi.pypi-dependencies]
+czkawka = { path = ".", editable = true }
+
+[tool.pixi.dependencies]
+gtk4 = ">=4.12.1,<5"
+ninja = ">=1.12.1,<2"
+meson = ">=1.5.1,<2"

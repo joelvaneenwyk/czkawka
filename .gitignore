@@ -32,3 +32,5 @@ krokiet/ui/test.slint
 .cspell/
 .git/
 .venv/
+
+dist/
