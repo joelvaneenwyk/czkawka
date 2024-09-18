@@ -89,6 +89,7 @@ tasks:
       - cmd: |
           cmd.exe /D /C \
             ""{{ joinPath .TASKFILE_DIR ".venv" "Scripts" "activate.bat" | shellQuote }}" && pixi run cargo build"
+
   meson-clean:
     cmds:
       - task: delete
