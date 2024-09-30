@@ -31,8 +31,8 @@ krokiet_dark:
 czkawka_r:
     cargo run --bin czkawka_gui --release
 
-cli:
-    cargo run --bin czkawka_cli
+cli *args:
+    cargo run --bin czkawka_cli -- {{args}}
 
 cli_help:
     cargo run --bin czkawka_cli -- --help
