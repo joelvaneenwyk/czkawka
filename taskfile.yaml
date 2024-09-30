@@ -76,9 +76,8 @@ tasks:
       # - task: gtk-build
       # - task: meson-build
 
-  czkawka-build:
+  gtk4:
     cmds:
-      - cmd: rye sync --locked
       - cmd: |
           rye run gvsbuild \
             build gtk4 \
@@ -86,42 +85,14 @@ tasks:
             --from-scratch \
             --build-dir .build/gtk4 \
             --msys-dir "$USERPROFILE/scoop/apps/msys2/current"
+      
+  czkawka-build:
+    deps: [install-dependencies]
+    cmds:
+      - cmd: rye sync --no-lock
       - cmd: |
           cmd.exe /D /C \
             ""{{ joinPath .TASKFILE_DIR ".venv" "Scripts" "activate.bat" | shellQuote }}" && pixi run cargo build"
-
-  meson-clean:
-    cmds:
-      - task: delete
-        vars: { TARGET_DIR: '{{.BUILD_DIR}}' }
-
-  meson-configure:
-    deps: [install-dependencies]
-    preconditions:
-      - meson --version
-    sources:
-      - meson.build
-    generates:
-      - '{{.BUILD_DIR}}/meson-info/meson-info.json'
-    cmds:
-      - cmd: >-
-          meson setup
-          --reconfigure
-          --backend=vs2022
-          --wrap-mode=forcefallback
-          --native-file "{{.TASKFILE_DIR}}/scripts/meson-vcpkg.ini"
-          -Duse_zlib_ng=false
-          -Dbuildtype=release
-          "{{.BUILD_DIR}}" "{{.TASKFILE_DIR}}"
-
-  meson-build:
-    deps: [meson-configure]
-    preconditions:
-      - '"{{.MSBUILD_EXE}}" --version'
-    vars:
-      SOLUTION_PATH: '{{.BUILD_DIR}}/gtk.sln'
-    cmds:
-      - cmd: '"{{.MSBUILD_EXE}}" /t:Build "{{fromSlash .SOLUTION_PATH}}"'
 
   install-dependencies:
     deps: [install-packages-scoop-pkg-config]
@@ -164,10 +135,6 @@ tasks:
     deps: [vcpkg-download]
     cmds:
       - cmd: '{{.RUN}} "{{ fromSlash .VCPKG_EXE }}" {{.CLI_ARGS}}'
-
-  meson:
-    cmds:
-      - cmd: '{{.RUN}} meson {{.CLI_ARGS}}'
 
   update-packages:
     ignore_error: true

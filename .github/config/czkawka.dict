@@ -8,6 +8,7 @@ buildtype
 chromaprint
 chrono
 cmdline
+colorama
 combaseapi
 czkawka
 Czkawka
@@ -31,6 +32,8 @@ libepoxy
 libheif
 libraw
 lockfiles
+markupsafe
+mdurl
 Mikrut
 msbuild
 MSBUILD
@@ -50,6 +53,7 @@ pixi
 pkgconfig
 profdata
 profraw
+pygments
 pylint
 pypi
 pyright
@@ -59,10 +63,13 @@ rawloader
 Rmlint
 rustc
 serde
+setuptools
+shellingham
 shobjidl
 Slint
 subprojects
 TASKFILE
+typer
 Ubunlog
 USERPROFILE
 vcpkg
