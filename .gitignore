@@ -34,3 +34,4 @@ krokiet/ui/test.slint
 .venv/
 
 dist/
+package/
