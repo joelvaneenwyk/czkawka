@@ -14,7 +14,7 @@ Prebuilt binaries are available here - https://github.com/qarmin/czkawka/release
 
 #### Prebuild binaries
 
-Ubuntu - `sudo apt install libgtk-4 libheif libraw ffmpeg -y`
+Ubuntu - `sudo apt install libgtk-4-bin libheif1 libraw-bin ffmpeg -y`
 
 #### Snap -
 
@@ -55,7 +55,7 @@ lot build and runtime dependencies.
 
 | Program | Minimal version |
 |:-------:|:---------------:|
-|  Rust   |     1.75.0      |
+|  Rust   |     1.79.0      |
 |   GTK   |       4.6       |
 
 ### Linux (Ubuntu, but on other OS should work similar)

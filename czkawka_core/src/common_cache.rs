@@ -56,7 +56,7 @@ where
         let hashmap_to_save = hashmap.values().filter(|t| t.get_size() >= minimum_file_size).collect::<Vec<_>>();
 
         {
-            let writer = BufWriter::new(file_handler.unwrap()); // Unwrap because cannot fail here
+            let writer = BufWriter::new(file_handler.expect("Cannot fail, because for saving, this always exists"));
             if let Err(e) = bincode::serialize_into(writer, &hashmap_to_save) {
                 text_messages.warnings.push(format!("Cannot write data to cache file {cache_file:?}, reason {e}"));
                 debug!("Failed to save cache to file {cache_file:?}");
@@ -82,6 +82,23 @@ where
         debug!("Failed to save cache to file {cache_file_name} because not exists");
     }
     text_messages
+}
+
+pub fn extract_loaded_cache<T>(
+    loaded_hash_map: &BTreeMap<String, T>,
+    files_to_check: BTreeMap<String, T>,
+    records_already_cached: &mut BTreeMap<String, T>,
+    non_cached_files_to_check: &mut BTreeMap<String, T>,
+) where
+    T: Clone,
+{
+    for (name, file_entry) in files_to_check {
+        if let Some(cached_file_entry) = loaded_hash_map.get(&name) {
+            records_already_cached.insert(name, cached_file_entry.clone());
+        } else {
+            non_cached_files_to_check.insert(name, file_entry);
+        }
+    }
 }
 
 #[fun_time(message = "load_cache_from_file_generalized_by_path", level = "debug")]
@@ -187,7 +204,7 @@ where
                 }
             };
         } else {
-            let reader = BufReader::new(file_handler_json.unwrap()); // Unwrap cannot fail, because at least one file must be valid
+            let reader = BufReader::new(file_handler_json.expect("This cannot fail, because if file_handler is None, then this cannot be None"));
             vec_loaded_entries = match serde_json::from_reader(reader) {
                 Ok(t) => t,
                 Err(e) => {

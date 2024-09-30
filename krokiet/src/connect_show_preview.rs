@@ -15,7 +15,7 @@ pub type ImageBufferRgba = image::ImageBuffer<image::Rgba<u8>, Vec<u8>>;
 pub fn connect_show_preview(app: &MainWindow) {
     let a = app.as_weak();
     app.global::<Callabler>().on_load_image_preview(move |image_path| {
-        let app = a.upgrade().unwrap();
+        let app = a.upgrade().expect("Failed to upgrade app :(");
 
         let settings = app.global::<Settings>();
         let gui_state = app.global::<GuiState>();
@@ -95,11 +95,12 @@ fn load_image(image_path: &Path) -> Option<(Duration, DynamicImage)> {
                 }
             }
         } else if is_raw_image {
-            if let Some(img) = get_dynamic_image_from_raw_image(image_name) {
-                img
-            } else {
-                error!("Error while loading raw image - not sure why - try to guess");
-                return None;
+            match get_dynamic_image_from_raw_image(image_name) {
+                Ok(img) => img,
+                Err(e) => {
+                    error!("Error while loading raw image: {}", e);
+                    return None;
+                }
             }
         } else {
             return None;
