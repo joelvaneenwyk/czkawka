@@ -5,15 +5,6 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::Ordering;
 use std::{fs, mem, panic};
 
-use crate::common::{
-    check_if_stop_received, create_crash_message, prepare_thread_handler_common, send_info_and_wait_for_ending_all_threads, AUDIO_FILES_EXTENSIONS,
-    IMAGE_RS_BROKEN_FILES_EXTENSIONS, PDF_FILES_EXTENSIONS, ZIP_FILES_EXTENSIONS,
-};
-use crate::common_cache::{extract_loaded_cache, get_broken_files_cache_file, load_cache_from_file_generalized_by_path, save_cache_to_file_generalized};
-use crate::common_dir_traversal::{DirTraversalBuilder, DirTraversalResult, FileEntry, ToolType};
-use crate::common_tool::{CommonData, CommonToolData, DeleteMethod};
-use crate::common_traits::*;
-use crate::progress_data::{CurrentStage, ProgressData};
 use crossbeam_channel::{Receiver, Sender};
 use fun_time::fun_time;
 use log::debug;
@@ -23,6 +14,16 @@ use pdf::PdfError;
 use pdf::PdfError::Try;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
+
+use crate::common::{
+    check_if_stop_received, create_crash_message, prepare_thread_handler_common, send_info_and_wait_for_ending_all_threads, WorkContinueStatus, AUDIO_FILES_EXTENSIONS,
+    IMAGE_RS_BROKEN_FILES_EXTENSIONS, PDF_FILES_EXTENSIONS, ZIP_FILES_EXTENSIONS,
+};
+use crate::common_cache::{extract_loaded_cache, get_broken_files_cache_file, load_cache_from_file_generalized_by_path, save_cache_to_file_generalized};
+use crate::common_dir_traversal::{DirTraversalBuilder, DirTraversalResult, FileEntry, ToolType};
+use crate::common_tool::{CommonData, CommonToolData, DeleteMethod};
+use crate::common_traits::*;
+use crate::progress_data::{CurrentStage, ProgressData};
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct BrokenEntry {
@@ -115,11 +116,11 @@ impl BrokenFiles {
     #[fun_time(message = "find_broken_files", level = "info")]
     pub fn find_broken_files(&mut self, stop_receiver: Option<&Receiver<()>>, progress_sender: Option<&Sender<ProgressData>>) {
         self.prepare_items();
-        if !self.check_files(stop_receiver, progress_sender) {
+        if self.check_files(stop_receiver, progress_sender) == WorkContinueStatus::Stop {
             self.common_data.stopped_search = true;
             return;
         }
-        if !self.look_for_broken_files(stop_receiver, progress_sender) {
+        if self.look_for_broken_files(stop_receiver, progress_sender) == WorkContinueStatus::Stop {
             self.common_data.stopped_search = true;
             return;
         }
@@ -128,7 +129,7 @@ impl BrokenFiles {
     }
 
     #[fun_time(message = "check_files", level = "debug")]
-    fn check_files(&mut self, stop_receiver: Option<&Receiver<()>>, progress_sender: Option<&Sender<ProgressData>>) -> bool {
+    fn check_files(&mut self, stop_receiver: Option<&Receiver<()>>, progress_sender: Option<&Sender<ProgressData>>) -> WorkContinueStatus {
         let zip_extensions = ZIP_FILES_EXTENSIONS.iter().collect::<HashSet<_>>();
         let audio_extensions = AUDIO_FILES_EXTENSIONS.iter().collect::<HashSet<_>>();
         let pdf_extensions = PDF_FILES_EXTENSIONS.iter().collect::<HashSet<_>>();
@@ -148,8 +149,10 @@ impl BrokenFiles {
         }
 
         self.common_data.extensions.set_and_validate_allowed_extensions(&extensions);
+        // TODO, responsibility should be moved to CLI/GUI
+        // assert!(self.common_data.extensions.set_any_extensions(), "This should be checked before");
         if !self.common_data.extensions.set_any_extensions() {
-            return true;
+            return WorkContinueStatus::Continue;
         }
 
         let result = DirTraversalBuilder::new()
@@ -173,10 +176,10 @@ impl BrokenFiles {
                     .collect();
                 self.common_data.text_messages.warnings.extend(warnings);
                 debug!("check_files - Found {} files to check.", self.files_to_check.len());
-                true
+                WorkContinueStatus::Continue
             }
 
-            DirTraversalResult::Stopped => false,
+            DirTraversalResult::Stopped => WorkContinueStatus::Stop,
         }
     }
 
@@ -243,7 +246,7 @@ impl BrokenFiles {
                     for idx in 0..file.num_pages() {
                         if let Err(e) = file.get_page(idx) {
                             let err = validate_pdf_error(&mut file_entry, e);
-                            if let PdfError::InvalidPassword = err {
+                            if matches!(err, PdfError::InvalidPassword) {
                                 return None;
                             }
                             break;
@@ -255,7 +258,7 @@ impl BrokenFiles {
                         return None;
                     }
                     let err = validate_pdf_error(&mut file_entry, e);
-                    if let PdfError::InvalidPassword = err {
+                    if matches!(err, PdfError::InvalidPassword) {
                         return None;
                     }
                 }
@@ -293,7 +296,11 @@ impl BrokenFiles {
     }
 
     #[fun_time(message = "look_for_broken_files", level = "debug")]
-    fn look_for_broken_files(&mut self, stop_receiver: Option<&Receiver<()>>, progress_sender: Option<&Sender<ProgressData>>) -> bool {
+    fn look_for_broken_files(&mut self, stop_receiver: Option<&Receiver<()>>, progress_sender: Option<&Sender<ProgressData>>) -> WorkContinueStatus {
+        if self.files_to_check.is_empty() {
+            return WorkContinueStatus::Continue;
+        }
+
         let (loaded_hash_map, records_already_cached, non_cached_files_to_check) = self.load_cache();
 
         let (progress_thread_handle, progress_thread_run, atomic_counter, _check_was_stopped) =
@@ -329,17 +336,14 @@ impl BrokenFiles {
 
         self.save_to_cache(&vec_file_entry, loaded_hash_map);
 
-        self.broken_files = vec_file_entry
-            .into_par_iter()
-            .filter_map(|f| if f.error_string.is_empty() { None } else { Some(f) })
-            .collect();
+        self.broken_files = vec_file_entry.into_iter().filter_map(|f| if f.error_string.is_empty() { None } else { Some(f) }).collect();
 
         self.information.number_of_broken_files = self.broken_files.len();
         debug!("Found {} broken files.", self.information.number_of_broken_files);
         // Clean unused data
         self.files_to_check = Default::default();
 
-        true
+        WorkContinueStatus::Continue
     }
     #[fun_time(message = "save_to_cache", level = "debug")]
     fn save_to_cache(&mut self, vec_file_entry: &[BrokenEntry], loaded_hash_map: BTreeMap<String, BrokenEntry>) {

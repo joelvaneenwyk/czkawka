@@ -2,27 +2,27 @@ use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::Ordering;
-use std::time::SystemTime;
+use std::time::Instant;
 use std::{mem, panic};
 
 use bk_tree::BKTree;
 use crossbeam_channel::{Receiver, Sender};
 use fun_time::fun_time;
+use hamming_bitwise_fast::hamming_bitwise_fast;
 use humansize::{format_size, BINARY};
-use image::{DynamicImage, GenericImageView};
+use image::GenericImageView;
 use image_hasher::{FilterType, HashAlg, HasherConfig};
 use log::debug;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 
-#[cfg(feature = "heif")]
-use crate::common::get_dynamic_image_from_heic;
 use crate::common::{
-    check_if_stop_received, create_crash_message, delete_files_custom, get_dynamic_image_from_raw_image, prepare_thread_handler_common, send_info_and_wait_for_ending_all_threads,
-    HEIC_EXTENSIONS, IMAGE_RS_SIMILAR_IMAGES_EXTENSIONS, RAW_IMAGE_EXTENSIONS,
+    check_if_stop_received, delete_files_custom, prepare_thread_handler_common, send_info_and_wait_for_ending_all_threads, WorkContinueStatus, HEIC_EXTENSIONS,
+    IMAGE_RS_SIMILAR_IMAGES_EXTENSIONS, JXL_IMAGE_EXTENSIONS, RAW_IMAGE_EXTENSIONS,
 };
 use crate::common_cache::{extract_loaded_cache, get_similar_images_cache_file, load_cache_from_file_generalized_by_path, save_cache_to_file_generalized};
 use crate::common_dir_traversal::{inode, take_1_per_inode, DirTraversalBuilder, DirTraversalResult, FileEntry, ToolType};
+use crate::common_image::get_dynamic_image_from_path;
 use crate::common_tool::{CommonData, CommonToolData, DeleteMethod};
 use crate::common_traits::{DebugPrint, PrintResults, ResultEntry};
 use crate::flc;
@@ -30,8 +30,11 @@ use crate::progress_data::{CurrentStage, ProgressData};
 
 type ImHash = Vec<u8>;
 
+// 40 is, similar like previous 20 in 8 hash size is useless
+// But since Krowka have problems with proper changing max value in fly
+// hardcode 40 as max value
 pub const SIMILAR_VALUES: [[u32; 6]; 4] = [
-    [1, 2, 5, 7, 14, 20],    // 8
+    [1, 2, 5, 7, 14, 40],    // 8
     [2, 5, 15, 30, 40, 40],  // 16
     [4, 10, 20, 40, 40, 40], // 32
     [6, 20, 40, 40, 40, 40], // 64
@@ -46,7 +49,6 @@ pub struct ImagesEntry {
     pub modified_date: u64,
     pub hash: ImHash,
     pub similarity: u32,
-    pub image_type: ImageType,
 }
 
 impl ResultEntry for ImagesEntry {
@@ -71,17 +73,8 @@ impl FileEntry {
             height: 0,
             hash: Vec::new(),
             similarity: 0,
-            image_type: ImageType::Unknown,
         }
     }
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
-pub enum ImageType {
-    Normal,
-    Raw,
-    Heic,
-    Unknown,
 }
 
 #[derive(Clone, Debug, Copy)]
@@ -100,7 +93,7 @@ struct Hamming;
 
 impl bk_tree::Metric<ImHash> for Hamming {
     fn distance(&self, a: &ImHash, b: &ImHash) -> u32 {
-        hamming::distance_fast(a, b).expect("Calculating hamming distance, cannot fail") as u32
+        hamming_bitwise_fast(a, b)
     }
 
     fn threshold_distance(&self, a: &ImHash, b: &ImHash, _threshold: u32) -> Option<u32> {
@@ -167,15 +160,15 @@ impl SimilarImages {
     pub fn find_similar_images(&mut self, stop_receiver: Option<&Receiver<()>>, progress_sender: Option<&Sender<ProgressData>>) {
         self.prepare_items();
         self.common_data.use_reference_folders = !self.common_data.directories.reference_directories.is_empty();
-        if !self.check_for_similar_images(stop_receiver, progress_sender) {
+        if self.check_for_similar_images(stop_receiver, progress_sender) == WorkContinueStatus::Stop {
             self.common_data.stopped_search = true;
             return;
         }
-        if !self.hash_images(stop_receiver, progress_sender) {
+        if self.hash_images(stop_receiver, progress_sender) == WorkContinueStatus::Stop {
             self.common_data.stopped_search = true;
             return;
         }
-        if !self.find_similar_hashes(stop_receiver, progress_sender) {
+        if self.find_similar_hashes(stop_receiver, progress_sender) == WorkContinueStatus::Stop {
             self.common_data.stopped_search = true;
             return;
         }
@@ -183,24 +176,21 @@ impl SimilarImages {
         self.debug_print();
     }
 
-    // #[fun_time(message = "check_for_similar_images", level = "debug")]
-    fn check_for_similar_images(&mut self, stop_receiver: Option<&Receiver<()>>, progress_sender: Option<&Sender<ProgressData>>) -> bool {
+    #[fun_time(message = "check_for_similar_images", level = "debug")]
+    fn check_for_similar_images(&mut self, stop_receiver: Option<&Receiver<()>>, progress_sender: Option<&Sender<ProgressData>>) -> WorkContinueStatus {
         if cfg!(feature = "heif") {
             self.common_data
                 .extensions
-                .set_and_validate_allowed_extensions(&[IMAGE_RS_SIMILAR_IMAGES_EXTENSIONS, RAW_IMAGE_EXTENSIONS, HEIC_EXTENSIONS].concat());
+                .set_and_validate_allowed_extensions(&[IMAGE_RS_SIMILAR_IMAGES_EXTENSIONS, RAW_IMAGE_EXTENSIONS, JXL_IMAGE_EXTENSIONS, HEIC_EXTENSIONS].concat());
         } else {
             self.common_data
                 .extensions
-                .set_and_validate_allowed_extensions(&[IMAGE_RS_SIMILAR_IMAGES_EXTENSIONS, RAW_IMAGE_EXTENSIONS].concat());
-        }
-        if !self.common_data.extensions.set_any_extensions() {
-            return true;
+                .set_and_validate_allowed_extensions(&[IMAGE_RS_SIMILAR_IMAGES_EXTENSIONS, RAW_IMAGE_EXTENSIONS, JXL_IMAGE_EXTENSIONS].concat());
         }
 
-        let normal_image_extensions = IMAGE_RS_SIMILAR_IMAGES_EXTENSIONS.iter().collect::<HashSet<_>>();
-        let raw_image_extensions = RAW_IMAGE_EXTENSIONS.iter().collect::<HashSet<_>>();
-        let heic_extensions = HEIC_EXTENSIONS.iter().collect::<HashSet<_>>();
+        if !self.common_data.extensions.set_any_extensions() {
+            return WorkContinueStatus::Continue;
+        }
 
         let result = DirTraversalBuilder::new()
             .group_by(inode)
@@ -217,26 +207,17 @@ impl SimilarImages {
                     .flat_map(if self.get_params().ignore_hard_links { |(_, fes)| fes } else { take_1_per_inode })
                     .map(|fe| {
                         let fe_str = fe.path.to_string_lossy().to_string();
-                        let extension_lowercase = fe.path.extension().unwrap_or_default().to_string_lossy().to_lowercase();
-                        let mut image_entry = fe.into_images_entry();
-                        if normal_image_extensions.contains(&extension_lowercase.as_str()) {
-                            image_entry.image_type = ImageType::Normal;
-                        } else if raw_image_extensions.contains(&extension_lowercase.as_str()) {
-                            image_entry.image_type = ImageType::Raw;
-                        } else if heic_extensions.contains(&extension_lowercase.as_str()) {
-                            image_entry.image_type = ImageType::Heic;
-                        } else {
-                            panic!("Unrecognized extension")
-                        }
+                        let image_entry = fe.into_images_entry();
+
                         (fe_str, image_entry)
                     })
                     .collect();
                 self.common_data.text_messages.warnings.extend(warnings);
                 debug!("check_files - Found {} image files.", self.images_to_check.len());
-                true
+                WorkContinueStatus::Continue
             }
 
-            DirTraversalResult::Stopped => false,
+            DirTraversalResult::Stopped => WorkContinueStatus::Stop,
         }
     }
 
@@ -285,7 +266,11 @@ impl SimilarImages {
     // - Join all hashes and save it to file
 
     #[fun_time(message = "hash_images", level = "debug")]
-    fn hash_images(&mut self, stop_receiver: Option<&Receiver<()>>, progress_sender: Option<&Sender<ProgressData>>) -> bool {
+    fn hash_images(&mut self, stop_receiver: Option<&Receiver<()>>, progress_sender: Option<&Sender<ProgressData>>) -> WorkContinueStatus {
+        if self.images_to_check.is_empty() {
+            return WorkContinueStatus::Continue;
+        }
+
         let (loaded_hash_map, records_already_cached, non_cached_files_to_check) = self.hash_images_load_cache();
 
         let (progress_thread_handle, progress_thread_run, atomic_counter, check_was_stopped) = prepare_thread_handler_common(
@@ -294,12 +279,6 @@ impl SimilarImages {
             non_cached_files_to_check.len(),
             self.get_test_type(),
         );
-
-        // Throw out images with not proper type - TODO why this happens, only broken cache?
-        let non_cached_files_to_check = non_cached_files_to_check
-            .into_iter()
-            .filter(|(_, file_entry)| file_entry.image_type != ImageType::Unknown)
-            .collect::<BTreeMap<_, _>>();
 
         debug!("hash_images - start hashing images");
         let (mut vec_file_entry, errors): (Vec<ImagesEntry>, Vec<String>) = non_cached_files_to_check
@@ -344,10 +323,10 @@ impl SimilarImages {
 
         // Break if stop was clicked after saving to cache
         if check_was_stopped.load(Ordering::Relaxed) {
-            return false;
+            return WorkContinueStatus::Stop;
         }
 
-        true
+        WorkContinueStatus::Continue
     }
 
     #[fun_time(message = "save_to_cache", level = "debug")]
@@ -370,38 +349,7 @@ impl SimilarImages {
     }
 
     fn collect_image_file_entry(&self, file_entry: &mut ImagesEntry) -> Result<(), String> {
-        let img;
-
-        if file_entry.image_type == ImageType::Heic {
-            #[cfg(feature = "heif")]
-            {
-                img = match get_dynamic_image_from_heic(&file_entry.path.to_string_lossy()) {
-                    Ok(t) => t,
-                    Err(e) => {
-                        return Err(format!("Cannot open HEIC file \"{}\": {}", file_entry.path.to_string_lossy(), e));
-                    }
-                };
-            }
-            #[cfg(not(feature = "heif"))]
-            {
-                img = Self::get_normal_heif_image(file_entry)?;
-            }
-        } else {
-            match file_entry.image_type {
-                ImageType::Normal | ImageType::Heic => {
-                    img = Self::get_normal_heif_image(file_entry)?;
-                }
-                ImageType::Raw => {
-                    img = match get_dynamic_image_from_raw_image(&file_entry.path) {
-                        Ok(t) => t,
-                        Err(e) => return Err(format!("Cannot open RAW file \"{}\": {}", file_entry.path.to_string_lossy(), e)),
-                    };
-                }
-                _ => {
-                    unreachable!();
-                }
-            }
-        }
+        let img = get_dynamic_image_from_path(&file_entry.path.to_string_lossy())?;
 
         let dimensions = img.dimensions();
 
@@ -413,24 +361,10 @@ impl SimilarImages {
             .hash_alg(self.get_params().hash_alg)
             .resize_filter(self.get_params().image_filter);
         let hasher = hasher_config.to_hasher();
-
         let hash = hasher.hash_image(&img);
         file_entry.hash = hash.as_bytes().to_vec();
 
         Ok(())
-    }
-
-    fn get_normal_heif_image(file_entry: &ImagesEntry) -> Result<DynamicImage, String> {
-        if let Ok(image_result) = panic::catch_unwind(|| image::open(&file_entry.path)) {
-            match image_result {
-                Ok(image) => Ok(image),
-                Err(e) => Err(format!("Cannot open image file \"{}\": {}", file_entry.path.to_string_lossy(), e)),
-            }
-        } else {
-            let message = create_crash_message("Image-rs", &file_entry.path.to_string_lossy(), "https://github.com/image-rs/image/issues");
-            println!("{message}");
-            Err(message)
-        }
     }
 
     // Split hashes at 2 parts, base hashes and hashes to compare, 3 argument is set of hashes with multiple images
@@ -514,7 +448,7 @@ impl SimilarImages {
         progress_sender: Option<&Sender<ProgressData>>,
         stop_receiver: Option<&Receiver<()>>,
         tolerance: u32,
-    ) -> bool {
+    ) -> WorkContinueStatus {
         // Don't use hashes with multiple images in bktree, because they will always be master of group and cannot be find by other hashes
         let (base_hashes, hashes_with_multiple_images) = self.split_hashes(all_hashed_images);
 
@@ -569,7 +503,7 @@ impl SimilarImages {
 
             if check_was_stopped.load(Ordering::Relaxed) {
                 send_info_and_wait_for_ending_all_threads(&progress_thread_run, progress_thread_handle);
-                return false;
+                return WorkContinueStatus::Stop;
             }
 
             self.connect_results(partial_results, &mut hashes_parents, &mut hashes_similarity, &hashes_with_multiple_images);
@@ -580,7 +514,7 @@ impl SimilarImages {
         debug_check_for_duplicated_things(self.common_data.use_reference_folders, &hashes_parents, &hashes_similarity, all_hashed_images, "LATTER");
         self.collect_hash_compare_result(hashes_parents, &hashes_with_multiple_images, all_hashed_images, collected_similar_images, hashes_similarity);
 
-        true
+        WorkContinueStatus::Continue
     }
 
     #[fun_time(message = "connect_results", level = "debug")]
@@ -648,9 +582,9 @@ impl SimilarImages {
     }
 
     #[fun_time(message = "find_similar_hashes", level = "debug")]
-    fn find_similar_hashes(&mut self, stop_receiver: Option<&Receiver<()>>, progress_sender: Option<&Sender<ProgressData>>) -> bool {
+    fn find_similar_hashes(&mut self, stop_receiver: Option<&Receiver<()>>, progress_sender: Option<&Sender<ProgressData>>) -> WorkContinueStatus {
         if self.image_hashes.is_empty() {
-            return true;
+            return WorkContinueStatus::Continue;
         }
 
         let tolerance = self.get_params().similarity;
@@ -667,8 +601,10 @@ impl SimilarImages {
                     collected_similar_images.insert(hash, vec_file_entry);
                 }
             }
-        } else if !self.compare_hashes_with_non_zero_tolerance(&all_hashed_images, &mut collected_similar_images, progress_sender, stop_receiver, tolerance) {
-            return false;
+        } else if self.compare_hashes_with_non_zero_tolerance(&all_hashed_images, &mut collected_similar_images, progress_sender, stop_receiver, tolerance)
+            == WorkContinueStatus::Stop
+        {
+            return WorkContinueStatus::Stop;
         }
 
         self.verify_duplicated_items(&collected_similar_images);
@@ -697,7 +633,7 @@ impl SimilarImages {
         self.images_to_check = Default::default();
         self.bktree = BKTree::new(Hamming);
 
-        true
+        WorkContinueStatus::Continue
     }
 
     #[fun_time(message = "exclude_items_with_same_size", level = "debug")]
@@ -707,8 +643,7 @@ impl SimilarImages {
                 let mut bt_sizes: BTreeSet<u64> = Default::default();
                 let mut vec_values = Vec::new();
                 for file_entry in vec_file_entry {
-                    if !bt_sizes.contains(&file_entry.size) {
-                        bt_sizes.insert(file_entry.size);
+                    if bt_sizes.insert(file_entry.size) {
                         vec_values.push(file_entry);
                     }
                 }
@@ -887,7 +822,7 @@ pub fn get_string_from_similarity(similarity: &u32, hash_size: u8) -> String {
     } else if *similarity <= SIMILAR_VALUES[index_preset][5] {
         flc!("core_similarity_minimal")
     } else {
-        panic!();
+        panic!("Invalid similarity value {similarity} for hash size {hash_size} (index {index_preset})");
     }
 }
 
@@ -957,21 +892,12 @@ pub fn test_image_conversion_speed() {
                     for size in [8, 16, 32, 64] {
                         let hasher_config = HasherConfig::new().hash_alg(alg).resize_filter(filter).hash_size(size, size);
 
-                        let start = SystemTime::now();
+                        let start = Instant::now();
 
                         let hasher = hasher_config.to_hasher();
                         let _hash = hasher.hash_image(&img_open);
 
-                        let end = SystemTime::now();
-
-                        println!(
-                            "{:?} us {:?} {:?} {}x{}",
-                            end.duration_since(start).expect("Used time backwards").as_micros(),
-                            alg,
-                            filter,
-                            size,
-                            size
-                        );
+                        println!("{:?} us {:?} {:?} {}x{}", start.elapsed().as_micros(), alg, filter, size, size);
                     }
                 }
             }
@@ -1087,11 +1013,12 @@ mod tests {
     use std::collections::HashMap;
     use std::path::PathBuf;
 
-    use crate::common_tool::CommonData;
-    use crate::similar_images::{Hamming, ImHash, ImageType, ImagesEntry, SimilarImages, SimilarImagesParameters};
     use bk_tree::BKTree;
     use image::imageops::FilterType;
     use image_hasher::HashAlg;
+
+    use crate::common_tool::CommonData;
+    use crate::similar_images::{Hamming, ImHash, ImagesEntry, SimilarImages, SimilarImagesParameters};
 
     fn get_default_parameters() -> SimilarImagesParameters {
         SimilarImagesParameters {
@@ -1463,7 +1390,6 @@ mod tests {
             modified_date: 0,
             hash,
             similarity: 0,
-            image_type: ImageType::Normal,
         }
     }
 }

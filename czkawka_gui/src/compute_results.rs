@@ -5,12 +5,6 @@ use std::time::Duration;
 
 use chrono::DateTime;
 use crossbeam_channel::Receiver;
-use fun_time::fun_time;
-use gtk4::prelude::*;
-use gtk4::{Entry, ListStore, TextView, TreeView, Widget};
-use humansize::{format_size, BINARY};
-use rayon::prelude::*;
-
 use czkawka_core::bad_extensions::BadExtensions;
 use czkawka_core::big_file::BigFile;
 use czkawka_core::broken_files::BrokenFiles;
@@ -27,6 +21,11 @@ use czkawka_core::similar_images;
 use czkawka_core::similar_images::{ImagesEntry, SimilarImages};
 use czkawka_core::similar_videos::SimilarVideos;
 use czkawka_core::temporary::Temporary;
+use fun_time::fun_time;
+use gtk4::prelude::*;
+use gtk4::{Entry, ListStore, TextView, TreeView, Widget};
+use humansize::{format_size, BINARY};
+use rayon::prelude::*;
 
 use crate::flg;
 use crate::gui_structs::gui_data::GuiData;
@@ -277,7 +276,7 @@ fn compute_bad_extensions(
                     (ColumnsBadExtensions::Name as u32, &file),
                     (ColumnsBadExtensions::Path as u32, &directory),
                     (ColumnsBadExtensions::CurrentExtension as u32, &file_entry.current_extension),
-                    (ColumnsBadExtensions::ValidExtensions as u32, &file_entry.proper_extensions),
+                    (ColumnsBadExtensions::ValidExtensions as u32, &file_entry.proper_extensions_group),
                     (
                         ColumnsBadExtensions::Modification as u32,
                         &(DateTime::from_timestamp(file_entry.modified_date as i64, 0)
@@ -1292,8 +1291,7 @@ fn compute_duplicate_finder(
 
 fn vector_sort_unstable_entry_by_path<T>(vector: &[T]) -> Vec<T>
 where
-    T: ResultEntry + Clone,
-    T: Send,
+    T: ResultEntry + Clone + Send,
 {
     if vector.len() >= 2 {
         let mut vector = vector.to_vec();
@@ -1306,8 +1304,7 @@ where
 
 fn vector_sort_simple_unstable_entry_by_path<T>(vector: &[T]) -> Vec<T>
 where
-    T: ResultEntry + Clone,
-    T: Send,
+    T: ResultEntry + Clone + Send,
 {
     let mut vector = vector.to_vec();
     vector.par_sort_unstable_by(|a, b| split_path_compare(a.get_path(), b.get_path()));

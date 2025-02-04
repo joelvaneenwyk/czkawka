@@ -4,7 +4,7 @@ use std::io::{BufReader, BufWriter};
 use fun_time::fun_time;
 use image::imageops::FilterType;
 use image_hasher::HashAlg;
-use log::debug;
+use log::{debug, error};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use serde::{Deserialize, Serialize};
 
@@ -15,6 +15,11 @@ use crate::duplicate::HashType;
 use crate::similar_images::{convert_algorithm_to_string, convert_filters_to_string};
 
 const CACHE_VERSION: &str = "70";
+#[cfg(feature = "fast_image_resize")]
+const CACHE_IMAGE_VERSION: &str = "90_fast_resize";
+#[cfg(not(feature = "fast_image_resize"))]
+const CACHE_IMAGE_VERSION: &str = "90";
+const CACHE_VIDEO_VERSION: &str = "90";
 
 pub fn get_broken_files_cache_file() -> String {
     format!("cache_broken_files_{CACHE_VERSION}.bin")
@@ -22,14 +27,14 @@ pub fn get_broken_files_cache_file() -> String {
 
 pub fn get_similar_images_cache_file(hash_size: &u8, hash_alg: &HashAlg, image_filter: &FilterType) -> String {
     format!(
-        "cache_similar_images_{hash_size}_{}_{}_{CACHE_VERSION}.bin",
+        "cache_similar_images_{hash_size}_{}_{}_{CACHE_IMAGE_VERSION}.bin",
         convert_algorithm_to_string(hash_alg),
         convert_filters_to_string(image_filter),
     )
 }
 
 pub fn get_similar_videos_cache_file() -> String {
-    format!("cache_similar_videos_{CACHE_VERSION}.bin")
+    format!("cache_similar_videos_{CACHE_VIDEO_VERSION}.bin")
 }
 pub fn get_similar_music_cache_file(checking_tags: bool) -> String {
     if checking_tags {
@@ -195,11 +200,18 @@ where
         if let Some(file_handler) = file_handler {
             let reader = BufReader::new(file_handler);
 
+            // TODO cannot use limits
+            // Probably also save function needs to be updated
+            // Without it loading not working
+
+            // let options = bincode::DefaultOptions::new().with_limit(4 * 1024 * 1024 * 1024);
+            // vec_loaded_entries = match options.deserialize_from(reader) {
+
             vec_loaded_entries = match bincode::deserialize_from(reader) {
                 Ok(t) => t,
                 Err(e) => {
                     text_messages.warnings.push(format!("Failed to load data from cache file {cache_file:?}, reason {e}"));
-                    debug!("Failed to load cache from file {cache_file:?}");
+                    error!("Failed to load cache from file {cache_file:?}");
                     return (text_messages, None);
                 }
             };
@@ -208,7 +220,9 @@ where
             vec_loaded_entries = match serde_json::from_reader(reader) {
                 Ok(t) => t,
                 Err(e) => {
-                    text_messages.warnings.push(format!("Failed to load data from cache file {cache_file_json:?}, reason {e}"));
+                    text_messages
+                        .warnings
+                        .push(format!("Failed to load data from json cache file {cache_file_json:?}, reason {e}"));
                     debug!("Failed to load cache from file {cache_file:?}");
                     return (text_messages, None);
                 }

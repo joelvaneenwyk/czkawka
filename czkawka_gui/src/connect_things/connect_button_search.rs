@@ -4,10 +4,6 @@ use std::sync::Arc;
 use std::thread;
 
 use crossbeam_channel::{Receiver, Sender};
-use fun_time::fun_time;
-use gtk4::prelude::*;
-use gtk4::Grid;
-
 use czkawka_core::bad_extensions::{BadExtensions, BadExtensionsParameters};
 use czkawka_core::big_file::{BigFile, BigFileParameters};
 use czkawka_core::broken_files::{BrokenFiles, BrokenFilesParameters, CheckedTypes};
@@ -23,6 +19,9 @@ use czkawka_core::same_music::{MusicSimilarity, SameMusic, SameMusicParameters};
 use czkawka_core::similar_images::{SimilarImages, SimilarImagesParameters};
 use czkawka_core::similar_videos::{SimilarVideos, SimilarVideosParameters};
 use czkawka_core::temporary::Temporary;
+use fun_time::fun_time;
+use gtk4::prelude::*;
+use gtk4::Grid;
 
 use crate::gui_structs::gui_data::GuiData;
 use crate::help_combo_box::{
@@ -182,7 +181,7 @@ impl LoadedCommonItems {
             .unwrap_or_else(|_| DEFAULT_MAXIMAL_FILE_SIZE.parse::<u64>().expect("Failed to parse maximal_file_size"));
         let ignore_other_filesystems = check_button_settings_one_filesystem.is_active();
 
-        LoadedCommonItems {
+        Self {
             included_directories,
             excluded_directories,
             reference_directories,

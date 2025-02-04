@@ -1,9 +1,8 @@
+use czkawka_core::common::regex_check;
+use czkawka_core::common_items::new_excluded_item;
 use gtk4::prelude::*;
 use gtk4::{ResponseType, TreeIter, Window};
 use regex::Regex;
-
-use czkawka_core::common::regex_check;
-use czkawka_core::common_items::new_excluded_item;
 
 use crate::flg;
 use crate::gui_structs::gui_data::GuiData;
@@ -394,6 +393,8 @@ fn popover_custom_select_unselect(
                             return;
                         }
                     } else {
+                        // Trivial regex is used, because I need here regex
+                        #[allow(clippy::trivial_regex)]
                         Regex::new("").expect("Empty regex should compile properly.")
                     };
 

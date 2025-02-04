@@ -1,10 +1,3 @@
-use gdk4::gdk_pixbuf::{InterpType, Pixbuf};
-use glib::Error;
-use gtk4::prelude::*;
-use gtk4::{ListStore, Scale, ScrollType, TextView, TreeView, Widget};
-use image::codecs::jpeg::JpegEncoder;
-use image::{DynamicImage, EncodableLayout};
-use once_cell::sync::OnceCell;
 use std::cell::RefCell;
 use std::cmp::Ordering;
 use std::collections::HashMap;
@@ -25,6 +18,13 @@ use czkawka_core::same_music::SameMusic;
 use czkawka_core::similar_images::SimilarImages;
 use czkawka_core::similar_videos::SimilarVideos;
 use czkawka_core::temporary::Temporary;
+use gdk4::gdk_pixbuf::{InterpType, Pixbuf};
+use glib::Error;
+use gtk4::prelude::*;
+use gtk4::{ListStore, Scale, ScrollType, TextView, TreeView, Widget};
+use image::codecs::jpeg::JpegEncoder;
+use image::{DynamicImage, EncodableLayout};
+use once_cell::sync::OnceCell;
 
 use crate::flg;
 use crate::notebook_enums::{NotebookMainEnum, NotebookUpperEnum};
@@ -404,7 +404,7 @@ pub fn get_tree_view_name_from_notebook_upper_enum(notebook_upper_enum: Notebook
     match notebook_upper_enum {
         NotebookUpperEnum::IncludedDirectories => "tree_view_upper_included_directories",
         NotebookUpperEnum::ExcludedDirectories => "tree_view_upper_excluded_directories",
-        _ => panic!(),
+        NotebookUpperEnum::ItemsConfiguration => panic!(),
     }
 }
 
@@ -481,9 +481,6 @@ pub fn clean_invalid_headers(model: &ListStore, column_header: i32, column_path:
                     }
                 }
             }
-            for tree_path in vec_tree_path_to_delete.iter().rev() {
-                model.remove(&model.iter(tree_path).expect("Using invalid tree_path"));
-            }
         }
         // Non empty means that header points at reference folder
         else {
@@ -529,9 +526,9 @@ pub fn clean_invalid_headers(model: &ListStore, column_header: i32, column_path:
                     }
                 }
             }
-            for tree_path in vec_tree_path_to_delete.iter().rev() {
-                model.remove(&model.iter(tree_path).expect("Using invalid tree_path"));
-            }
+        }
+        for tree_path in vec_tree_path_to_delete.iter().rev() {
+            model.remove(&model.iter(tree_path).expect("Using invalid tree_path"));
         }
     }
 
@@ -744,6 +741,8 @@ pub fn get_pixbuf_from_dynamic_image(dynamic_image: &DynamicImage) -> Result<Pix
     let mut output = Vec::new();
     JpegEncoder::new(&mut output).encode_image(dynamic_image).expect("Failed to encode jpeg image"); // TODO remove here unwrap
     let arra;
+    // TODO - this code can really be broken, but I couldn't find better solution
+    #[allow(static_mut_refs)]
     unsafe {
         IMAGE_PREVIEW_ARRAY.take();
         IMAGE_PREVIEW_ARRAY.set(output).expect("Setting image preview array failed");

@@ -23,6 +23,10 @@ perf.data
 perf.data.old
 krokiet/ui/test.slint
 
+misc/*/*.lock
+misc/*/target/
+misc/*/.idea
+
 # pixi environments
 .pixi
 *.egg-info

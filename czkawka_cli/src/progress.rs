@@ -1,10 +1,9 @@
 use std::time::Duration;
 
 use crossbeam_channel::Receiver;
-use indicatif::{ProgressBar, ProgressStyle};
-
 use czkawka_core::common_dir_traversal::ToolType;
 use czkawka_core::progress_data::{CurrentStage, ProgressData};
+use indicatif::{ProgressBar, ProgressStyle};
 
 pub fn connect_progress(progress_receiver: &Receiver<ProgressData>) {
     let mut pb = ProgressBar::new(1);
@@ -55,6 +54,7 @@ pub fn get_progress_bar_for_collect_files() -> ProgressBar {
     let pb = ProgressBar::new_spinner();
     pb.enable_steady_tick(Duration::from_millis(120));
     pb.set_style(
+        // #[allow(clippy::literal_string_with_formatting_args)] // TODO - enable after being backported to stable
         ProgressStyle::with_template("{msg} {spinner:.blue}")
             .expect("Failed to create progress bar style")
             .tick_strings(&["▹▹▹▹▹", "▸▹▹▹▹", "▹▸▹▹▹", "▹▹▸▹▹", "▹▹▹▸▹", "▹▹▹▹▸", "▪▪▪▪▪"]),

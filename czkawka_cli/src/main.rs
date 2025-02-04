@@ -1,13 +1,12 @@
 #![allow(clippy::needless_late_init)]
 #![warn(clippy::unwrap_used)]
 
+use std::path::PathBuf;
 use std::thread;
 
 use clap::Parser;
-use crossbeam_channel::{bounded, unbounded, Receiver, Sender};
-use log::error;
-
 use commands::Commands;
+use crossbeam_channel::{bounded, unbounded, Receiver, Sender};
 use czkawka_core::bad_extensions::{BadExtensions, BadExtensionsParameters};
 use czkawka_core::big_file::{BigFile, BigFileParameters, SearchMode};
 use czkawka_core::broken_files::{BrokenFiles, BrokenFilesParameters, CheckedTypes};
@@ -24,6 +23,7 @@ use czkawka_core::same_music::{SameMusic, SameMusicParameters};
 use czkawka_core::similar_images::{return_similarity_from_similarity_preset, test_image_conversion_speed, SimilarImages, SimilarImagesParameters};
 use czkawka_core::similar_videos::{SimilarVideos, SimilarVideosParameters};
 use czkawka_core::temporary::Temporary;
+use log::error;
 
 use crate::commands::{
     Args, BadExtensionsArgs, BiggestFilesArgs, BrokenFilesArgs, CommonCliItems, DuplicatesArgs, EmptyFilesArgs, EmptyFoldersArgs, InvalidSymlinksArgs, SameMusicArgs,
@@ -80,6 +80,7 @@ fn main() {
 fn duplicates(duplicates: DuplicatesArgs, stop_receiver: &Receiver<()>, progress_sender: &Sender<ProgressData>) {
     let DuplicatesArgs {
         common_cli_items,
+        reference_directories,
         minimal_file_size,
         maximal_file_size,
         minimal_cached_file_size,
@@ -104,7 +105,7 @@ fn duplicates(duplicates: DuplicatesArgs, stop_receiver: &Receiver<()>, progress
     );
     let mut item = DuplicateFinder::new(params);
 
-    set_common_settings(&mut item, &common_cli_items);
+    set_common_settings(&mut item, &common_cli_items, Some(reference_directories.reference_directories.as_ref()));
     item.set_minimal_file_size(minimal_file_size);
     item.set_maximal_file_size(maximal_file_size);
     item.set_delete_method(delete_method.delete_method);
@@ -112,7 +113,7 @@ fn duplicates(duplicates: DuplicatesArgs, stop_receiver: &Receiver<()>, progress
 
     item.find_duplicates(Some(stop_receiver), Some(progress_sender));
 
-    save_and_print_results(&mut item, &common_cli_items);
+    save_and_print_results(&item, &common_cli_items);
 }
 
 fn empty_folders(empty_folders: EmptyFoldersArgs, stop_receiver: &Receiver<()>, progress_sender: &Sender<ProgressData>) {
@@ -120,14 +121,14 @@ fn empty_folders(empty_folders: EmptyFoldersArgs, stop_receiver: &Receiver<()>, 
 
     let mut item = EmptyFolder::new();
 
-    set_common_settings(&mut item, &common_cli_items);
+    set_common_settings(&mut item, &common_cli_items, None);
     if delete_folders {
         item.set_delete_method(DeleteMethod::Delete);
     }
 
     item.find_empty_folders(Some(stop_receiver), Some(progress_sender));
 
-    save_and_print_results(&mut item, &common_cli_items);
+    save_and_print_results(&item, &common_cli_items);
 }
 
 fn biggest_files(biggest_files: BiggestFilesArgs, stop_receiver: &Receiver<()>, progress_sender: &Sender<ProgressData>) {
@@ -142,14 +143,14 @@ fn biggest_files(biggest_files: BiggestFilesArgs, stop_receiver: &Receiver<()>, 
     let params = BigFileParameters::new(number_of_files, big_files_mode);
     let mut item = BigFile::new(params);
 
-    set_common_settings(&mut item, &common_cli_items);
+    set_common_settings(&mut item, &common_cli_items, None);
     if delete_files {
         item.set_delete_method(DeleteMethod::Delete);
     }
 
     item.find_big_files(Some(stop_receiver), Some(progress_sender));
 
-    save_and_print_results(&mut item, &common_cli_items);
+    save_and_print_results(&item, &common_cli_items);
 }
 
 fn empty_files(empty_files: EmptyFilesArgs, stop_receiver: &Receiver<()>, progress_sender: &Sender<ProgressData>) {
@@ -157,14 +158,14 @@ fn empty_files(empty_files: EmptyFilesArgs, stop_receiver: &Receiver<()>, progre
 
     let mut item = EmptyFiles::new();
 
-    set_common_settings(&mut item, &common_cli_items);
+    set_common_settings(&mut item, &common_cli_items, None);
     if delete_files {
         item.set_delete_method(DeleteMethod::Delete);
     }
 
     item.find_empty_files(Some(stop_receiver), Some(progress_sender));
 
-    save_and_print_results(&mut item, &common_cli_items);
+    save_and_print_results(&item, &common_cli_items);
 }
 
 fn temporary(temporary: TemporaryArgs, stop_receiver: &Receiver<()>, progress_sender: &Sender<ProgressData>) {
@@ -172,19 +173,20 @@ fn temporary(temporary: TemporaryArgs, stop_receiver: &Receiver<()>, progress_se
 
     let mut item = Temporary::new();
 
-    set_common_settings(&mut item, &common_cli_items);
+    set_common_settings(&mut item, &common_cli_items, None);
     if delete_files {
         item.set_delete_method(DeleteMethod::Delete);
     }
 
     item.find_temporary_files(Some(stop_receiver), Some(progress_sender));
 
-    save_and_print_results(&mut item, &common_cli_items);
+    save_and_print_results(&item, &common_cli_items);
 }
 
 fn similar_images(similar_images: SimilarImagesArgs, stop_receiver: &Receiver<()>, progress_sender: &Sender<ProgressData>) {
     let SimilarImagesArgs {
         common_cli_items,
+        reference_directories,
         minimal_file_size,
         maximal_file_size,
         similarity_preset,
@@ -208,7 +210,7 @@ fn similar_images(similar_images: SimilarImagesArgs, stop_receiver: &Receiver<()
     );
     let mut item = SimilarImages::new(params);
 
-    set_common_settings(&mut item, &common_cli_items);
+    set_common_settings(&mut item, &common_cli_items, Some(reference_directories.reference_directories.as_ref()));
     item.set_minimal_file_size(minimal_file_size);
     item.set_maximal_file_size(maximal_file_size);
     item.set_delete_method(delete_method.delete_method);
@@ -216,12 +218,13 @@ fn similar_images(similar_images: SimilarImagesArgs, stop_receiver: &Receiver<()
 
     item.find_similar_images(Some(stop_receiver), Some(progress_sender));
 
-    save_and_print_results(&mut item, &common_cli_items);
+    save_and_print_results(&item, &common_cli_items);
 }
 
 fn same_music(same_music: SameMusicArgs, stop_receiver: &Receiver<()>, progress_sender: &Sender<ProgressData>) {
     let SameMusicArgs {
         common_cli_items,
+        reference_directories,
         delete_method,
         minimal_file_size,
         maximal_file_size,
@@ -244,7 +247,7 @@ fn same_music(same_music: SameMusicArgs, stop_receiver: &Receiver<()>, progress_
     );
     let mut item = SameMusic::new(params);
 
-    set_common_settings(&mut item, &common_cli_items);
+    set_common_settings(&mut item, &common_cli_items, Some(reference_directories.reference_directories.as_ref()));
     item.set_minimal_file_size(minimal_file_size);
     item.set_maximal_file_size(maximal_file_size);
     item.set_delete_method(delete_method.delete_method);
@@ -252,7 +255,7 @@ fn same_music(same_music: SameMusicArgs, stop_receiver: &Receiver<()>, progress_
 
     item.find_same_music(Some(stop_receiver), Some(progress_sender));
 
-    save_and_print_results(&mut item, &common_cli_items);
+    save_and_print_results(&item, &common_cli_items);
 }
 
 fn invalid_symlinks(invalid_symlinks: InvalidSymlinksArgs, stop_receiver: &Receiver<()>, progress_sender: &Sender<ProgressData>) {
@@ -260,14 +263,14 @@ fn invalid_symlinks(invalid_symlinks: InvalidSymlinksArgs, stop_receiver: &Recei
 
     let mut item = InvalidSymlinks::new();
 
-    set_common_settings(&mut item, &common_cli_items);
+    set_common_settings(&mut item, &common_cli_items, None);
     if delete_files {
         item.set_delete_method(DeleteMethod::Delete);
     }
 
     item.find_invalid_links(Some(stop_receiver), Some(progress_sender));
 
-    save_and_print_results(&mut item, &common_cli_items);
+    save_and_print_results(&item, &common_cli_items);
 }
 
 fn broken_files(broken_files: BrokenFilesArgs, stop_receiver: &Receiver<()>, progress_sender: &Sender<ProgressData>) {
@@ -284,18 +287,19 @@ fn broken_files(broken_files: BrokenFilesArgs, stop_receiver: &Receiver<()>, pro
     let params = BrokenFilesParameters::new(checked_type);
     let mut item = BrokenFiles::new(params);
 
-    set_common_settings(&mut item, &common_cli_items);
+    set_common_settings(&mut item, &common_cli_items, None);
     if delete_files {
         item.set_delete_method(DeleteMethod::Delete);
     }
 
     item.find_broken_files(Some(stop_receiver), Some(progress_sender));
 
-    save_and_print_results(&mut item, &common_cli_items);
+    save_and_print_results(&item, &common_cli_items);
 }
 
 fn similar_videos(similar_videos: SimilarVideosArgs, stop_receiver: &Receiver<()>, progress_sender: &Sender<ProgressData>) {
     let SimilarVideosArgs {
+        reference_directories,
         common_cli_items,
         tolerance,
         minimal_file_size,
@@ -309,7 +313,7 @@ fn similar_videos(similar_videos: SimilarVideosArgs, stop_receiver: &Receiver<()
     let params = SimilarVideosParameters::new(tolerance, ignore_same_size.ignore_same_size, !allow_hard_links.allow_hard_links);
     let mut item = SimilarVideos::new(params);
 
-    set_common_settings(&mut item, &common_cli_items);
+    set_common_settings(&mut item, &common_cli_items, Some(reference_directories.reference_directories.as_ref()));
     item.set_minimal_file_size(minimal_file_size);
     item.set_maximal_file_size(maximal_file_size);
     item.set_delete_method(delete_method.delete_method);
@@ -317,7 +321,7 @@ fn similar_videos(similar_videos: SimilarVideosArgs, stop_receiver: &Receiver<()
 
     item.find_similar_videos(Some(stop_receiver), Some(progress_sender));
 
-    save_and_print_results(&mut item, &common_cli_items);
+    save_and_print_results(&item, &common_cli_items);
 }
 
 fn bad_extensions(bad_extensions: BadExtensionsArgs, stop_receiver: &Receiver<()>, progress_sender: &Sender<ProgressData>) {
@@ -326,14 +330,14 @@ fn bad_extensions(bad_extensions: BadExtensionsArgs, stop_receiver: &Receiver<()
     let params = BadExtensionsParameters::new();
     let mut item = BadExtensions::new(params);
 
-    set_common_settings(&mut item, &common_cli_items);
+    set_common_settings(&mut item, &common_cli_items, None);
 
     item.find_bad_extensions_files(Some(stop_receiver), Some(progress_sender));
 
-    save_and_print_results(&mut item, &common_cli_items);
+    save_and_print_results(&item, &common_cli_items);
 }
 
-fn save_and_print_results<T: CommonData + PrintResults>(component: &mut T, common_cli_items: &CommonCliItems) {
+fn save_and_print_results<T: CommonData + PrintResults>(component: &T, common_cli_items: &CommonCliItems) {
     if let Some(file_name) = common_cli_items.file_to_save.file_name() {
         if let Err(e) = component.print_results_to_file(file_name) {
             error!("Failed to save results to file {e}");
@@ -355,13 +359,19 @@ fn save_and_print_results<T: CommonData + PrintResults>(component: &mut T, commo
     component.get_text_messages().print_messages();
 }
 
-fn set_common_settings<T>(component: &mut T, common_cli_items: &CommonCliItems)
+fn set_common_settings<T>(component: &mut T, common_cli_items: &CommonCliItems, reference_directories: Option<&Vec<PathBuf>>)
 where
     T: CommonData + PrintResults,
 {
     set_number_of_threads(common_cli_items.thread_number);
 
-    component.set_included_directory(common_cli_items.directories.clone());
+    let mut included_directories = common_cli_items.directories.clone();
+    if let Some(reference_directories) = reference_directories {
+        included_directories.extend_from_slice(reference_directories);
+        component.set_reference_directory(reference_directories.clone());
+    }
+
+    component.set_included_directory(included_directories);
     component.set_excluded_directory(common_cli_items.excluded_directories.clone());
     component.set_excluded_items(common_cli_items.excluded_items.clone());
     component.set_recursive_search(!common_cli_items.not_recursive);
