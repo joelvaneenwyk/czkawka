@@ -39,3 +39,4 @@ misc/*/.idea
 
 dist/
 package/
+.task/
