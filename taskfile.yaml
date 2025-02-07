@@ -66,7 +66,8 @@ vars:
     - "{{.PACKAGE_NAME_PREFIX}}-python-pkgconfig"
   TARGET: x86_64-pc-windows-gnu
   GVSBUILD_DIR: C:/.tmp/gvs
-  GVSBUILD_DIR_LNK: .build/gvsbuild
+  LOCAL_BUILD_DIR: .build
+  GVSBUILD_DIR_LNK: '{{.LOCAL_BUILD_DIR}}/gvsbuild'
 
 env:
   VCPKG_DISABLE_METRICS: 1
@@ -98,7 +99,7 @@ tasks:
     sources:
       - uv.lock
     generates:
-      - '{{.GVSBUILD_DIR_LNK}}/'
+      - .build/gvsbuild/gtk/**/bin/gtk*.dll
     vars:
       RUN: cmd /d /c
       DIR_LINK: '{{ joinPath .TASKFILE_DIR .GVSBUILD_DIR_LNK | fromSlash }}'
