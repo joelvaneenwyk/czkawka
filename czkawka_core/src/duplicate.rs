@@ -1367,8 +1367,6 @@ impl CommonData for DuplicateFinder {
 mod tests {
     use std::fs::{read_dir, File, Metadata};
     use std::io;
-    #[cfg(target_family = "windows")]
-    use std::os::fs::MetadataExt;
     #[cfg(target_family = "unix")]
     use std::os::unix::fs::MetadataExt;
     use std::path::PathBuf;
