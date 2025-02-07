@@ -71,31 +71,64 @@ vars:
 
 env:
   VCPKG_DISABLE_METRICS: 1
+  GI_TYPELIB_PATH: '{{.GTK_PATH}}\lib\girepository-1.0'
+  GDK_PIXBUF_MODULE_FILE: '{{.GTK_PATH}}\lib\gdk-pixbuf-2.0\2.10.0\loaders.cache'
+  GTK_PATH: '{{.GTK_PATH}}\lib\gtk-4.0'
+  GTK_DATA_PREFIX: '{{.GTK_PATH}}'
+  XDG_DATA_DIRS: '{{.GTK_PATH}}\share'
+  GIO_EXTRA_MODULES: '{{.GTK_PATH}}\lib\gio\modules'
   PKG_CONFIG_PATH: '{{.GVSBUILD_DIR}}/gtk/x64/release/lib/pkgconfig'
 
 tasks:
   default:
     cmds:
-      - task: build
+      - task: run
 
   build:
-    deps: [gtk4]
+    deps: [gtk]
     sources:
-      - Cargo.lock
-      - Cargo.toml
-      - src/**
-      - build.rs
+      - ./Cargo.*
+      - ./czkawka_*/**/*.rs
+      - ./czkawka_*/**/Cargo.*
     generates:
-      -
+      - ./target/release/czkawka*{{exeExt}}
+      - ./target/release/krokiet{{exeExt}}
+    vars:
+      GTK_DIR: '{{ joinPath .TASKFILE_DIR .GVSBUILD_DIR_LNK }}'
+      GTK_PKG_CONFIG_DIR: '{{.GTK_DIR}}/gtk/x64/release/lib/pkgconfig'
+      GTK_BIN_DIR: '{{.GTK_DIR}}/gtk/x64/release/bin'
+      GTK_LIB_DIR: '{{.GTK_DIR}}/gtk/x64/release/lib'
     cmds:
       - cmd: | # shell
-          cargo build --release --locked
+          cmd.exe /D /C \
+            rmdir /s /q "{{ joinPath .TASKFILE_DIR "target"}}" || true
       - cmd: | # shell
-          mkdir package || true
-          cp "target/{{.TARGET}}/release/czkawka_gui{{exeExt}}" package/ || true
-          cp "target/{{.TARGET}}/release/czkawka_cli{{exeExt}}" package/ || true
+          PKG_CONFIG_PATH="{{.GTK_PKG_CONFIG_DIR | fromSlash}}"
+          GTK_LIB_DIR="{{.GTK_LIB_DIR | fromSlash}}"
+          cargo build --release --locked
 
-  gtk4:
+  run:
+    deps: [build]
+    dir: ./target/release/
+    vars:
+      GTK_PATH: '{{.GVSBUILD_DIR | fromSlash}}'
+    env:
+      PATH: '{{.GTK_PATH}}\bin;%PATH%'
+    cmds:
+      - cmd: | # shell
+          cargo run --release --locked --bin czkawka_gui
+
+  gtk:
+    deps: [gtk-build]
+    vars:
+      SOURCE_BIN_DIR: '{{.TASKFILE_DIR}}/{{.GVSBUILD_DIR_LNK}}/gtk/x64/release/bin'
+      TARGET_BIN_DIR: '{{.TASKFILE_DIR}}/target/release'
+    cmds:
+      - cmd: | # shell
+          xcopy /y /s /i /d "{{.SOURCE_BIN_DIR | fromSlash}}" "{{.TARGET_BIN_DIR | fromSlash}}"
+
+  gtk-build:
+    aliases: [build-gtk, gtk4]
     sources:
       - uv.lock
     generates:
@@ -289,7 +322,7 @@ tasks:
     cmds:
       - cmd: uv sync --no-lock
 
-  gtk-build:
+  gtk-build-custom:
     deps: [sync, install-dependencies]
     vars:
       MESON_OPTIONS: >-
