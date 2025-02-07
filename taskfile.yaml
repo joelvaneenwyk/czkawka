@@ -65,11 +65,12 @@ vars:
     - "{{.PACKAGE_NAME_PREFIX}}-python-pip"
     - "{{.PACKAGE_NAME_PREFIX}}-python-pkgconfig"
   TARGET: x86_64-pc-windows-gnu
-  GVSBUILD_DIR: .build/gvsbuild
+  GVSBUILD_DIR: C:/.tmp/gvs
+  GVSBUILD_DIR_LNK: .build/gvsbuild
 
 env:
   VCPKG_DISABLE_METRICS: 1
-  PKG_CONFIG_PATH: '{{.TASKFILE_DIR}}/{{.GVSBUILD_DIR}}/gtk/x64/release/lib/pkgconfig'
+  PKG_CONFIG_PATH: '{{.GVSBUILD_DIR}}/gtk/x64/release/lib/pkgconfig'
 
 tasks:
   default:
@@ -97,13 +98,23 @@ tasks:
     sources:
       - uv.lock
     generates:
-      - .build/gtk4/
+      - '{{.GVSBUILD_DIR_LNK}}/'
+    vars:
+      RUN: cmd /d /c
+      DIR_LINK: '{{ joinPath .TASKFILE_DIR .GVSBUILD_DIR_LNK | fromSlash }}'
+      DIR_TARGET: '{{.GVSBUILD_DIR | fromSlash}}'
     cmds:
+      - cmd: | # shell
+          {{.RUN}} mkdir "{{.DIR_LINK}}" || true
+          {{.RUN}} rmdir /q /s "{{.DIR_LINK}}" || true
+          {{.RUN}} mkdir "{{.DIR_TARGET}}" || true
+          echo "Creating symlink {{.DIR_LINK}} -> {{.DIR_TARGET}}"
+          {{.RUN}} mklink /D "{{.DIR_LINK}}" "{{.DIR_TARGET}}"
       - cmd: | # shell
           uv run gvsbuild \
             build gtk4 \
             {{if .VERBOSE}}--verbose{{end}} \
-            --build-dir .build/gtk4 \
+            --build-dir "{{.DIR_LINK}}" \
             --msys-dir "$USERPROFILE/scoop/apps/msys2/current"
 
   venv:
