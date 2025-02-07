@@ -6,7 +6,7 @@ authors = [{ name = "Rafał Mikrut" }]
 readme = "README.md"
 requires-python = ">= 3.10"
 dependencies = [
-    "gvsbuild>=2024.9.0",
+    "gvsbuild",
     "jinja2>=3.1.4",
     "ninja>=1.11.1.1",
     "meson>=1.5.1",
@@ -19,10 +19,14 @@ build-backend = "hatchling.build"
 
 [tool.uv]
 managed = true
+package = true
 link-mode = "copy"
 
 [tool.uv.pip]
 universal = true
+
+[tool.uv.sources]
+gvsbuild = { git = "https://github.com/joelvaneenwyk/gvsbuild" }
 
 [tool.hatch.metadata]
 allow-direct-references = true
