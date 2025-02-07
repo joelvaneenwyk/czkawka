@@ -14,34 +14,10 @@ vars:
   GTK_DIR: "{{ joinPath .TASKFILE_DIR .GVSBUILD_DIR_LNK }}"
 
   GVS_GTK_ROOT_DIR: "{{.GVSBUILD_DIR}}/gtk/x64/release"
-  #GTK_ROOT_DIR: test
-  #GTK_BIN_DIR: '{{.GVSBUILD_DIR}}/gtk/x64/release/bin'
-  #GTK_LIB_DIR: '{{.GVSBUILD_DIR}}/gtk/x64/release/lib'
-  #GTK_PKG_CONFIG_DIR: '{{.GVSBUILD_DIR}}/gtk/x64/release/lib/pkgconfig'
-
-  VCPKG_BOOTSTRAP_BAT: "{{.TASKFILE_DIR}}/build-aux/vcpkg/bootstrap-vcpkg.bat"
-  VCPKG_BOOTSTRAP_SH: "{{.TASKFILE_DIR}}/build-aux/vcpkg/bootstrap-vcpkg.sh"
-  VCPKG_EXE: "{{.TASKFILE_DIR}}/build-aux/vcpkg/vcpkg.exe"
 
   RUN_WINDOWS: "cmd /d /c"
   RUN_UNIX: "sh -c"
   RUN: '{{if eq OS "windows"}}{{.RUN_WINDOWS}}{{ else }}{{.RUN_UNIX}}{{ end }}'
-
-  MSBUILD_EXE_RAW:
-    sh: |
-      strings=("Preview" "Enterprise" "Professional" "Community")
-      for str in "${strings[@]}"
-      do
-        result="C:/Program Files/Microsoft Visual Studio/2022/${str}/MSBuild/Current/Bin/amd64/MSBuild.exe"
-        if [ -e "$result" ]; then
-          echo "$result"
-          break
-        fi
-      done
-  MSBUILD_EXE: "{{fromSlash .MSBUILD_EXE_RAW}}"
-  BUILD_INT_BASE_DIR: "{{.TASKFILE_DIR}}/.build"
-  BUILD_INT_DIR: "{{.BUILD_INT_BASE_DIR}}/vscode"
-  BUILD_DIR: "{{fromSlash .BUILD_INT_DIR}}"
 
   BUILD_TOOLCHAIN:
   BUILD_ARCH: x86_64
@@ -56,15 +32,11 @@ vars:
     - "ncurses"
     - "{{.PACKAGE_NAME_PREFIX}}-{{.BUILD_CC}}"
     - "{{.PACKAGE_NAME_PREFIX}}-clang"
-    # - "{{.PACKAGE_NAME_PREFIX}}-gcc"
-    # - "{{.PACKAGE_NAME_PREFIX}}-glib2"
-    # - "{{.PACKAGE_NAME_PREFIX}}-meson"
     - "{{.PACKAGE_NAME_PREFIX}}-ncurses"
     - "{{.PACKAGE_NAME_PREFIX}}-ntldd"
     - "{{.PACKAGE_NAME_PREFIX}}-openssl"
     - "{{.PACKAGE_NAME_PREFIX}}-pkgconf"
     - "{{.PACKAGE_NAME_PREFIX}}-zlib"
-    # Defaults
     - "{{.PACKAGE_NAME_PREFIX}}-gstreamer"
     - "{{.PACKAGE_NAME_PREFIX}}-pango"
     - "{{.PACKAGE_NAME_PREFIX}}-gcc"
@@ -75,15 +47,14 @@ vars:
     - "{{.PACKAGE_NAME_PREFIX}}-libepoxy"
     - "{{.PACKAGE_NAME_PREFIX}}-pango"
     - "{{.PACKAGE_NAME_PREFIX}}-cairo"
-  MSYS2_PYTHON_PACKAGES:
-    - "{{.PACKAGE_NAME_PREFIX}}-python"
-    - "{{.PACKAGE_NAME_PREFIX}}-python-pip"
-    - "{{.PACKAGE_NAME_PREFIX}}-python-pkgconfig"
 
 env:
   VCPKG_DISABLE_METRICS: 1
 
+  # PATH variable with GTK bin folder added. Not able to override
+  # the PATH variable globally here so we do it locally as needed.
   PATH_GTK: '{{ joinPath (.GVS_GTK_ROOT_DIR | default "") "bin" }}{{ if eq OS "windows" }};{{ else }}:{{ end }}{{ env "PATH" }}'
+
   GTK_ROOT_DIR: '{{ joinPath (.GVS_GTK_ROOT_DIR | default "") "" }}'
   GDK_PIXBUF_MODULE_FILE: '{{ joinPath (.GVS_GTK_ROOT_DIR | default "") "lib/gdk-pixbuf-2.0/2.10.0/loaders.cache" }}'
   GIO_EXTRA_MODULES: '{{ joinPath (.GVS_GTK_ROOT_DIR | default "") "lib/gio/modules" }}'
@@ -114,6 +85,14 @@ tasks:
                      XDG_DATA_DIRS; do
             test -e "${!var}" && echo "✓ Path $var: '${!var}'" || echo "✗ Path $var: ${!var}"
           done
+
+  sync:
+    sources:
+      - pyproject.toml
+    generates:
+      - .venv/**/*
+    cmds:
+      - cmd: uv sync
 
   build:
     deps: [gtk]
@@ -163,7 +142,6 @@ tasks:
     generates:
       - .build/gvsbuild/gtk/**/bin/gtk*.dll
     vars:
-      RUN: cmd /d /c
       DIR_LINK: "{{ joinPath .TASKFILE_DIR .GVSBUILD_DIR_LNK | fromSlash }}"
       DIR_TARGET: "{{.GVSBUILD_DIR | fromSlash}}"
     cmds:
@@ -199,7 +177,6 @@ tasks:
     deps: [install-packages-scoop-pkg-config]
     cmds:
       - task: install-packages
-      - task: vcpkg-integrate
 
   scoop-install:
     desc: Install libraries with scoop
@@ -213,32 +190,6 @@ tasks:
       - cmd: pwsh -NoProfile -Command 'Join-Path (Resolve-Path ~).Path "scoop/shims" >> $Env:GITHUB_PATH'
         platforms: [windows]
         ignore_error: true
-
-  git-submodule-init:
-    status:
-      - test -f "{{.VCPKG_BOOTSTRAP_BAT}}"
-    cmds:
-      - cmd: | # shell
-          git -C "{{.TASKFILE_DIR}}" submodule update --init --recursive
-
-  vcpkg-integrate:
-    deps: [vcpkg-download]
-    internal: true
-    cmds:
-      - cmd: | # shell
-          {{.RUN}} "{{ fromSlash .VCPKG_EXE }}" integrate install
-
-  vcpkg-download:
-    deps: [git-submodule-init]
-    status:
-      - 'test -f "{{.VCPKG_EXE}}"'
-    cmds:
-      - cmd: '{{.RUN}} "{{ fromSlash .VCPKG_BOOTSTRAP_BAT }}" -disableMetrics'
-
-  vcpkg:
-    deps: [vcpkg-download]
-    cmds:
-      - cmd: '{{.RUN}} "{{ fromSlash .VCPKG_EXE }}" {{.CLI_ARGS}}'
 
   update-packages:
     ignore_error: true
@@ -319,37 +270,6 @@ tasks:
         platforms: [windows]
       - cmd: '{{.RUN}} rm -rf "{{.TARGET_DIR}}"'
         platforms: [linux, darwin]
-
-  ninja:
-    deps: [meson]
-    preconditions:
-      - ninja --version
-    cmds:
-      - cmd: 'ninja -C "{{.BUILD_DIR}}"'
-
-  build-msbuild:
-    cmds:
-      - task: build-msbuild-gtk
-        vars: { CONFIG: Debug, PLATFORM: x64 }
-      - task: build-msbuild-gtk
-        vars: { CONFIG: Release, PLATFORM: x64 }
-
-  build-msbuild-gtk:
-    internal: true
-    deps: [install-dependencies]
-    vars:
-      CONFIG: '{{.CONFIG | default "Debug"}}'
-      PLATFORM: '{{.PLATFORM | default "x64"}}'
-    cmds:
-      - cmd: '"{{ .MSBUILD_EXE }}" "{{.TASKFILE_DIR}}/vs/gtk.sln" /t:Build /p:Configuration="{{.CONFIG}}" /p:Platform="{{.PLATFORM}}"'
-
-  sync:
-    sources:
-      - pyproject.toml
-    generates:
-      - .venv/**/*
-    cmds:
-      - cmd: uv sync --no-lock
 
   gtk-build-custom:
     deps: [sync, install-dependencies]

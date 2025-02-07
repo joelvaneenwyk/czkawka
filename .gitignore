@@ -1,3 +1,4 @@
+# Czkawka
 /target
 .idea/
 *.iml
@@ -23,15 +24,8 @@ perf.data
 perf.data.old
 krokiet/ui/test.slint
 
-misc/*/*.lock
-misc/*/target/
-misc/*/.idea
+/.git/
 
-# pixi environments
-.pixi
-*.egg-info
-
-# Czkawka
 .build/
 .cspell/
 .git/
@@ -40,3 +34,7 @@ misc/*/.idea
 dist/
 package/
 .task/
+
+misc/*/*.lock
+misc/*/target/
+misc/*/.idea
