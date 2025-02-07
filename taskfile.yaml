@@ -8,12 +8,12 @@ vars:
 
   LOCAL_BUILD_DIR: .build
 
-  GVSBUILD_DIR: 'C:/.tmp/gvs'
-  GVSBUILD_DIR_LNK: '{{.LOCAL_BUILD_DIR}}/gvsbuild'
+  GVSBUILD_DIR: "C:/.tmp/gvs"
+  GVSBUILD_DIR_LNK: "{{.LOCAL_BUILD_DIR}}/gvsbuild"
 
-  GTK_DIR: '{{ joinPath .TASKFILE_DIR .GVSBUILD_DIR_LNK }}'
+  GTK_DIR: "{{ joinPath .TASKFILE_DIR .GVSBUILD_DIR_LNK }}"
 
-  GVS_GTK_ROOT_DIR: '{{.GVSBUILD_DIR}}/gtk/x64/release'
+  GVS_GTK_ROOT_DIR: "{{.GVSBUILD_DIR}}/gtk/x64/release"
   #GTK_ROOT_DIR: test
   #GTK_BIN_DIR: '{{.GVSBUILD_DIR}}/gtk/x64/release/bin'
   #GTK_LIB_DIR: '{{.GVSBUILD_DIR}}/gtk/x64/release/lib'
@@ -83,6 +83,7 @@ vars:
 env:
   VCPKG_DISABLE_METRICS: 1
 
+  PATH_GTK: '{{ joinPath (.GVS_GTK_ROOT_DIR | default "") "bin" }}{{ if eq OS "windows" }};{{ else }}:{{ end }}{{ env "PATH" }}'
   GTK_ROOT_DIR: '{{ joinPath (.GVS_GTK_ROOT_DIR | default "") "" }}'
   GDK_PIXBUF_MODULE_FILE: '{{ joinPath (.GVS_GTK_ROOT_DIR | default "") "lib/gdk-pixbuf-2.0/2.10.0/loaders.cache" }}'
   GIO_EXTRA_MODULES: '{{ joinPath (.GVS_GTK_ROOT_DIR | default "") "lib/gio/modules" }}'
@@ -104,6 +105,8 @@ tasks:
   check-environment:
     aliases: [env]
     cmds:
+      - cmd: | # shell
+          PATH="$PATH_GTK" hb-info --help
       - cmd: | # shell
           for var in GTK_ROOT_DIR GTK_PKG_CONFIG_DIR GDK_PIXBUF_MODULE_FILE \
                      GIO_EXTRA_MODULES GTK_DATA_PREFIX \
@@ -138,12 +141,12 @@ tasks:
   gtk:
     deps: [gtk-build]
     vars:
-      SOURCE_BIN_DIR: '{{.TASKFILE_DIR}}/{{.GVSBUILD_DIR_LNK}}/gtk/x64/release/bin'
-      TARGET_BIN_DIR: '{{.TASKFILE_DIR}}/target/release'
+      SOURCE_BIN_DIR: "{{.TASKFILE_DIR}}/{{.GVSBUILD_DIR_LNK}}/gtk/x64/release/bin"
+      TARGET_BIN_DIR: "{{.TASKFILE_DIR}}/target/release"
     silent: true
     env:
-      GTK_SOURCE_BIN_DIR: '{{.SOURCE_BIN_DIR | fromSlash}}'
-      GTK_TARGET_BIN_DIR: '{{.TARGET_BIN_DIR | fromSlash}}'
+      GTK_SOURCE_BIN_DIR: "{{.SOURCE_BIN_DIR | fromSlash}}"
+      GTK_TARGET_BIN_DIR: "{{.TARGET_BIN_DIR | fromSlash}}"
     cmds:
       - cmd: | # shell
           if xcopy /y /s /i /d "$GTK_SOURCE_BIN_DIR" "$GTK_TARGET_BIN_DIR" >nul; then
@@ -161,8 +164,8 @@ tasks:
       - .build/gvsbuild/gtk/**/bin/gtk*.dll
     vars:
       RUN: cmd /d /c
-      DIR_LINK: '{{ joinPath .TASKFILE_DIR .GVSBUILD_DIR_LNK | fromSlash }}'
-      DIR_TARGET: '{{.GVSBUILD_DIR | fromSlash}}'
+      DIR_LINK: "{{ joinPath .TASKFILE_DIR .GVSBUILD_DIR_LNK | fromSlash }}"
+      DIR_TARGET: "{{.GVSBUILD_DIR | fromSlash}}"
     cmds:
       - cmd: | # shell
           {{.RUN}} mkdir "{{.DIR_LINK}}" || true
