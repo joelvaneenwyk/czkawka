@@ -111,11 +111,14 @@ tasks:
     deps: [build]
     dir: ./target/release/
     vars:
-      GTK_PATH: '{{.GVSBUILD_DIR | fromSlash}}'
-    env:
-      PATH: '{{.GTK_PATH}}\bin;%PATH%'
+      GTK_DIR: '{{ joinPath .TASKFILE_DIR .GVSBUILD_DIR_LNK }}'
+      GTK_PKG_CONFIG_DIR: '{{.GTK_DIR}}/gtk/x64/release/lib/pkgconfig'
+      GTK_BIN_DIR: '{{.GTK_DIR}}/gtk/x64/release/bin'
+      GTK_LIB_DIR: '{{.GTK_DIR}}/gtk/x64/release/lib'
     cmds:
       - cmd: | # shell
+          PKG_CONFIG_PATH="{{.GTK_PKG_CONFIG_DIR | fromSlash}}"
+          GTK_LIB_DIR="{{.GTK_LIB_DIR | fromSlash}}"
           cargo run --release --locked --bin czkawka_gui
 
   gtk:
