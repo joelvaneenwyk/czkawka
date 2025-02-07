@@ -65,40 +65,40 @@ docker build ./misc/docker/ --tag cargo-gtk
 
 ## Compilation
 
-Czkawka can be installed with Debug or Release build.  
+Czkawka can be installed with Debug or Release build.
 With Debug build additional checks, e.g., variables overflow, are available, but depending on the usage it works very
-slow, so it should be used only for development purposes.    
+slow, so it should be used only for development purposes.
 Compilation with `--release` flag will optimize binaries, so they can be used with good performance (official binaries
 are built with this flag)
 
 - Download the source
 
-```
+```sh
 git clone https://github.com/qarmin/czkawka.git
 cd czkawka
 ```
 
 - Compile and run GTK GUI
 
-```
+```sh
 cargo run --release --bin czkawka_gui
 ```
 
 - Compile and run CLI (by default this will print help with examples)
 
-```
+```sh
 cargo run --release --bin czkawka_cli
 ```
 
 ## Compilation with Docker
 
-```shell
+```sh
 docker run -t --rm --volume $PWD:/app --workdir /app cargo-gtk cargo build --release --bin czkawka_gui
 ```
 
 Run the binary:
 
-```shell
+```sh
 target/release/czkawka_gui
 ```
 
@@ -106,11 +106,12 @@ target/release/czkawka_gui
 
 Currently, the only additional dependence is heif image support.
 
-To enable checking for heif images, just add ` --all-features` or `--features heif`
+To enable checking for heif images, just add `--all-features` or `--features heif`
 
-```
+```sh
 cargo run --features heif --bin czkawka_cli -- image  -d /home/rafal/ -f "results.txt"
 ```
 
-**Be aware, that heif support is not available on Windows, so you can't compile it with this feature, because
-mingw-w64-x86_64-libheif is not available in fedora repos, which are used for cross compilation.**
+> [!WARNING]
+> Be aware, that `heif` support is not available on Windows, so you can't compile it with this feature, because
+mingw-w64-x86_64-libheif is not available in fedora repos, which are used for cross compilation.
