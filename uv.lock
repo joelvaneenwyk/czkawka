@@ -205,7 +205,10 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "cmake" },
+    { name = "meson" },
     { name = "mypy" },
+    { name = "ninja" },
     { name = "pylint" },
     { name = "pyright" },
     { name = "ruff" },
@@ -222,7 +225,10 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "cmake", specifier = ">=3.31.4" },
+    { name = "meson", specifier = ">=1.7.0" },
     { name = "mypy", specifier = ">=1.11.2" },
+    { name = "ninja", specifier = ">=1.11.1.3" },
     { name = "pylint", specifier = ">=3.2.7" },
     { name = "pyright", specifier = ">=1.1.380" },
     { name = "ruff", specifier = ">=0.6.5" },
