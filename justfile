@@ -1,14 +1,10 @@
 # Enable .env file loading
 set dotenv-load
 
-# This causes the variable assignment below to become a global
-# environment variable taht we can use in our tasks below.
-set export
-
 # Defaults for those not found in environment
-GTK_PATH := env('GTK_PATH', justfile_directory() / '.build/gvsbuild/gtk/x64/release')
-PKG_CONFIG_PATH := env('PKG_CONFIG_PATH', justfile_directory() / '.build/gvsbuild/gtk/x64/release/lib/pkgconfig')
-GTK_LIB_DIR := env('PKG_CONFIG_PATH', justfile_directory() / '.build/gvsbuild/gtk/x64/release/lib')
+export GTK_PATH := env('GTK_PATH', justfile_directory() / '.build/gvsbuild/gtk/x64/release')
+export PKG_CONFIG_PATH := env('PKG_CONFIG_PATH', justfile_directory() / '.build/gvsbuild/gtk/x64/release/lib/pkgconfig')
+export LIB := env('PKG_CONFIG_PATH', justfile_directory() / '.build/gvsbuild/gtk/x64/release/lib')
 
 build_all:
     echo "Config path: $PKG_CONFIG_PATH"
