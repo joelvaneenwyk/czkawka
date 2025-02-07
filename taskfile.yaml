@@ -65,9 +65,11 @@ vars:
     - "{{.PACKAGE_NAME_PREFIX}}-python-pip"
     - "{{.PACKAGE_NAME_PREFIX}}-python-pkgconfig"
   TARGET: x86_64-pc-windows-gnu
+  GVSBUILD_DIR: .build/gvsbuild
 
 env:
   VCPKG_DISABLE_METRICS: 1
+  PKG_CONFIG_PATH: '{{.TASKFILE_DIR}}/{{.GVSBUILD_DIR}}/gtk/x64/release/lib/pkgconfig'
 
 tasks:
   default:
@@ -84,13 +86,12 @@ tasks:
     generates:
       -
     cmds:
-      - cmd: |
-          export PKG_CONFIG_PATH="{{.TASKFILE_DIR}}/.build/gtk4/gtk/x64/release/lib/pkgconfig:$PKG_CONFIG_PATH"
+      - cmd: | # shell
           cargo build --release --locked
-      - cmd: |
+      - cmd: | # shell
           mkdir package || true
-          cp "target/{{.TARGET}}/release/czkawka_gui.exe" package/ || true
-          cp "target/{{.TARGET}}/release/czkawka_cli.exe" package/ || true
+          cp "target/{{.TARGET}}/release/czkawka_gui{{exeExt}}" package/ || true
+          cp "target/{{.TARGET}}/release/czkawka_cli{{exeExt}}" package/ || true
 
   gtk4:
     sources:
@@ -98,10 +99,10 @@ tasks:
     generates:
       - .build/gtk4/
     cmds:
-      - cmd: |
+      - cmd: | # shell
           uv run gvsbuild \
             build gtk4 \
-            --verbose \
+            {{if .VERBOSE}}--verbose{{end}} \
             --build-dir .build/gtk4 \
             --msys-dir "$USERPROFILE/scoop/apps/msys2/current"
 
@@ -116,7 +117,7 @@ tasks:
   czkawka-build:
     deps: [install-dependencies, venv]
     cmds:
-      - cmd: |
+      - cmd: | # shell
           cmd.exe /D /C \
             ""{{ joinPath .TASKFILE_DIR ".venv" "Scripts" "activate.bat" | shellQuote }}" && pixi run cargo build"
 
@@ -131,7 +132,8 @@ tasks:
     status:
       - "scoop --version"
     cmds:
-      - cmd: pwsh -NoProfile -Command 'iex "& {$(irm get.scoop.sh)} -RunAsAdmin"'
+      - cmd: | # shell
+          pwsh -NoProfile -Command 'iex "& {$(irm get.scoop.sh)} -RunAsAdmin"'
         platforms: [windows]
         ignore_error: true
       - cmd: pwsh -NoProfile -Command 'Join-Path (Resolve-Path ~).Path "scoop/shims" >> $Env:GITHUB_PATH'
@@ -140,15 +142,17 @@ tasks:
 
   git-submodule-init:
     status:
-      - 'test -f "{{.VCPKG_BOOTSTRAP_BAT}}"'
+      - test -f "{{.VCPKG_BOOTSTRAP_BAT}}"
     cmds:
-      - cmd: 'git -C "{{.TASKFILE_DIR}}" submodule update --init --recursive'
+      - cmd: | # shell
+          git -C "{{.TASKFILE_DIR}}" submodule update --init --recursive
 
   vcpkg-integrate:
     deps: [vcpkg-download]
     internal: true
     cmds:
-      - cmd: '{{.RUN}} "{{ fromSlash .VCPKG_EXE }}" integrate install'
+      - cmd: | # shell
+          {{.RUN}} "{{ fromSlash .VCPKG_EXE }}" integrate install
 
   vcpkg-download:
     deps: [git-submodule-init]
