@@ -4,6 +4,21 @@
 version: "3"
 
 vars:
+  TARGET: x86_64-pc-windows-gnu
+
+  LOCAL_BUILD_DIR: .build
+
+  GVSBUILD_DIR: 'C:/.tmp/gvs'
+  GVSBUILD_DIR_LNK: '{{.LOCAL_BUILD_DIR}}/gvsbuild'
+
+  GTK_DIR: '{{ joinPath .TASKFILE_DIR .GVSBUILD_DIR_LNK }}'
+
+  GVS_GTK_ROOT_DIR: '{{.GVSBUILD_DIR}}/gtk/x64/release'
+  #GTK_ROOT_DIR: test
+  #GTK_BIN_DIR: '{{.GVSBUILD_DIR}}/gtk/x64/release/bin'
+  #GTK_LIB_DIR: '{{.GVSBUILD_DIR}}/gtk/x64/release/lib'
+  #GTK_PKG_CONFIG_DIR: '{{.GVSBUILD_DIR}}/gtk/x64/release/lib/pkgconfig'
+
   VCPKG_BOOTSTRAP_BAT: "{{.TASKFILE_DIR}}/build-aux/vcpkg/bootstrap-vcpkg.bat"
   VCPKG_BOOTSTRAP_SH: "{{.TASKFILE_DIR}}/build-aux/vcpkg/bootstrap-vcpkg.sh"
   VCPKG_EXE: "{{.TASKFILE_DIR}}/build-aux/vcpkg/vcpkg.exe"
@@ -64,25 +79,38 @@ vars:
     - "{{.PACKAGE_NAME_PREFIX}}-python"
     - "{{.PACKAGE_NAME_PREFIX}}-python-pip"
     - "{{.PACKAGE_NAME_PREFIX}}-python-pkgconfig"
-  TARGET: x86_64-pc-windows-gnu
-  GVSBUILD_DIR: C:/.tmp/gvs
-  LOCAL_BUILD_DIR: .build
-  GVSBUILD_DIR_LNK: '{{.LOCAL_BUILD_DIR}}/gvsbuild'
 
 env:
   VCPKG_DISABLE_METRICS: 1
-  GI_TYPELIB_PATH: '{{.GTK_PATH}}\lib\girepository-1.0'
-  GDK_PIXBUF_MODULE_FILE: '{{.GTK_PATH}}\lib\gdk-pixbuf-2.0\2.10.0\loaders.cache'
-  GTK_PATH: '{{.GTK_PATH}}\lib\gtk-4.0'
-  GTK_DATA_PREFIX: '{{.GTK_PATH}}'
-  XDG_DATA_DIRS: '{{.GTK_PATH}}\share'
-  GIO_EXTRA_MODULES: '{{.GTK_PATH}}\lib\gio\modules'
-  PKG_CONFIG_PATH: '{{.GVSBUILD_DIR}}/gtk/x64/release/lib/pkgconfig'
+
+  GTK_ROOT_DIR: '{{ joinPath (.GVS_GTK_ROOT_DIR | default "") "" }}'
+  GDK_PIXBUF_MODULE_FILE: '{{ joinPath (.GVS_GTK_ROOT_DIR | default "") "lib/gdk-pixbuf-2.0/2.10.0/loaders.cache" }}'
+  GIO_EXTRA_MODULES: '{{ joinPath (.GVS_GTK_ROOT_DIR | default "") "lib/gio/modules" }}'
+  GTK_DATA_PREFIX: '{{ joinPath (.GVS_GTK_ROOT_DIR | default "") "share" }}'
+  GTK_PATH: '{{ joinPath (.GVS_GTK_ROOT_DIR | default "") "share/gtk-4.0" }}'
+  PKG_CONFIG_PATH: '{{ joinPath (.GVS_GTK_ROOT_DIR | default "") "lib/pkgconfig" }}'
+  XDG_DATA_DIRS: '{{ joinPath (.GVS_GTK_ROOT_DIR | default "") "share" }}'
+
+  GTK_DIR: '{{ joinPath (.GVS_GTK_ROOT_DIR | default "") "" }}'
+  GTK_PKG_CONFIG_DIR: '{{ joinPath (.GVS_GTK_ROOT_DIR | default "") "lib/pkgconfig" }}'
+  GTK_BIN_DIR: '{{ joinPath (.GVS_GTK_ROOT_DIR | default "") "bin" }}'
+  GTK_LIB_DIR: '{{ joinPath (.GVS_GTK_ROOT_DIR | default "") "lib" }}'
 
 tasks:
   default:
     cmds:
       - task: run
+
+  check-environment:
+    aliases: [env]
+    cmds:
+      - cmd: | # shell
+          for var in GTK_ROOT_DIR GTK_PKG_CONFIG_DIR GDK_PIXBUF_MODULE_FILE \
+                     GIO_EXTRA_MODULES GTK_DATA_PREFIX \
+                     GTK_LIB_DIR GTK_PATH PKG_CONFIG_PATH \
+                     XDG_DATA_DIRS; do
+            test -e "${!var}" && echo "✓ Path $var: '${!var}'" || echo "✗ Path $var: ${!var}"
+          done
 
   build:
     deps: [gtk]
@@ -93,32 +121,18 @@ tasks:
     generates:
       - ./target/release/czkawka*{{exeExt}}
       - ./target/release/krokiet{{exeExt}}
-    vars:
-      GTK_DIR: '{{ joinPath .TASKFILE_DIR .GVSBUILD_DIR_LNK }}'
-      GTK_PKG_CONFIG_DIR: '{{.GTK_DIR}}/gtk/x64/release/lib/pkgconfig'
-      GTK_BIN_DIR: '{{.GTK_DIR}}/gtk/x64/release/bin'
-      GTK_LIB_DIR: '{{.GTK_DIR}}/gtk/x64/release/lib'
     cmds:
       - cmd: | # shell
           cmd.exe /D /C \
             rmdir /s /q "{{ joinPath .TASKFILE_DIR "target"}}" || true
       - cmd: | # shell
-          PKG_CONFIG_PATH="{{.GTK_PKG_CONFIG_DIR | fromSlash}}"
-          GTK_LIB_DIR="{{.GTK_LIB_DIR | fromSlash}}"
           cargo build --release --locked
 
   run:
     deps: [build]
     dir: ./target/release/
-    vars:
-      GTK_DIR: '{{ joinPath .TASKFILE_DIR .GVSBUILD_DIR_LNK }}'
-      GTK_PKG_CONFIG_DIR: '{{.GTK_DIR}}/gtk/x64/release/lib/pkgconfig'
-      GTK_BIN_DIR: '{{.GTK_DIR}}/gtk/x64/release/bin'
-      GTK_LIB_DIR: '{{.GTK_DIR}}/gtk/x64/release/lib'
     cmds:
       - cmd: | # shell
-          PKG_CONFIG_PATH="{{.GTK_PKG_CONFIG_DIR | fromSlash}}"
-          GTK_LIB_DIR="{{.GTK_LIB_DIR | fromSlash}}"
           cargo run --release --locked --bin czkawka_gui
 
   gtk:
@@ -126,9 +140,18 @@ tasks:
     vars:
       SOURCE_BIN_DIR: '{{.TASKFILE_DIR}}/{{.GVSBUILD_DIR_LNK}}/gtk/x64/release/bin'
       TARGET_BIN_DIR: '{{.TASKFILE_DIR}}/target/release'
+    silent: true
+    env:
+      GTK_SOURCE_BIN_DIR: '{{.SOURCE_BIN_DIR | fromSlash}}'
+      GTK_TARGET_BIN_DIR: '{{.TARGET_BIN_DIR | fromSlash}}'
     cmds:
       - cmd: | # shell
-          xcopy /y /s /i /d "{{.SOURCE_BIN_DIR | fromSlash}}" "{{.TARGET_BIN_DIR | fromSlash}}"
+          if xcopy /y /s /i /d "$GTK_SOURCE_BIN_DIR" "$GTK_TARGET_BIN_DIR" >nul; then
+            echo "Updated GTK binaries in target directory: '$GTK_TARGET_BIN_DIR'"
+          else
+            echo "Failed to copy GTK binaries to target directory."
+            exit 1
+          fi
 
   gtk-build:
     aliases: [build-gtk, gtk4]
