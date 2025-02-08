@@ -19,7 +19,7 @@ use czkawka_core::similar_images::SimilarImages;
 use czkawka_core::similar_videos::SimilarVideos;
 use czkawka_core::temporary::Temporary;
 use gdk4::gdk_pixbuf::{InterpType, Pixbuf};
-use glib::Error;
+use gtk4::glib::Error;
 use gtk4::prelude::*;
 use gtk4::{ListStore, Scale, ScrollType, TextView, TreeView, Widget};
 use image::codecs::jpeg::JpegEncoder;
@@ -796,17 +796,17 @@ pub fn scale_set_min_max_values(scale: &Scale, minimum: f64, maximum: f64, curre
     }
 }
 
-pub fn scale_step_function(scale: &Scale, _scroll_type: ScrollType, value: f64) -> glib::Propagation {
+pub fn scale_step_function(scale: &Scale, _scroll_type: ScrollType, value: f64) -> gtk4::glib::Propagation {
     scale.set_increments(1_f64, 1_f64);
     scale.set_round_digits(0);
     scale.set_fill_level(value.round());
-    glib::Propagation::Proceed
+    gtk4::glib::Propagation::Proceed
 }
 
 #[cfg(test)]
 mod test {
-    use glib::types::Type;
-    use glib::Value;
+    use gtk4::glib::types::Type;
+    use gtk4::glib::Value;
     use gtk4::prelude::*;
     use gtk4::{Orientation, TreeView};
     use image::DynamicImage;

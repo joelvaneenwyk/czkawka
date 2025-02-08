@@ -104,11 +104,11 @@ tasks:
       - ./target/release/czkawka*{{exeExt}}
       - ./target/release/krokiet{{exeExt}}
     cmds:
+      #- cmd: | # shell
+      #    cmd.exe /D /C \
+      #      rmdir /s /q "{{ joinPath .TASKFILE_DIR "target"}}" || true
       - cmd: | # shell
-          cmd.exe /D /C \
-            rmdir /s /q "{{ joinPath .TASKFILE_DIR "target"}}" || true
-      - cmd: | # shell
-          cargo build --release --locked
+          cargo build --release
 
   run:
     deps: [build]

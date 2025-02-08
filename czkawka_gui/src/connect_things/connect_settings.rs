@@ -40,7 +40,7 @@ pub fn connect_settings(gui_data: &GuiData) {
 
         window_settings.connect_close_request(move |window| {
             window.hide();
-            glib::Propagation::Stop
+            gtk4::glib::Propagation::Stop
         });
     }
 

@@ -139,7 +139,7 @@ pub fn connect_popover_sort(gui_data: &GuiData) {
 
 #[cfg(test)]
 mod test {
-    use glib::types::Type;
+    use gtk4::glib::types::Type;
     use gtk4::prelude::*;
     use gtk4::{Popover, TreeView};
 

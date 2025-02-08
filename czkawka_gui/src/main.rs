@@ -143,6 +143,6 @@ fn build_ui(application: &Application, arguments: &[OsString]) {
             // Save configuration at exit
         }
         taskbar_state.borrow_mut().release();
-        glib::Propagation::Proceed
+        gtk4::glib::Propagation::Proceed
     });
 }

@@ -12,7 +12,7 @@ pub fn opening_enter_function_ported_upper_directories(
     _key_value: Key,
     key_code: u32,
     _modifier_type: ModifierType,
-) -> glib::Propagation {
+) -> gtk4::glib::Propagation {
     let tree_view = event_controller
         .widget()
         .expect("Item has no widget")
@@ -40,7 +40,7 @@ pub fn opening_enter_function_ported_upper_directories(
         }
     }
     // false // True catches signal, and don't send it to function, e.g. up button is caught and don't move selection
-    glib::Propagation::Proceed
+    gtk4::glib::Propagation::Proceed
 }
 
 pub fn opening_middle_mouse_function(gesture_click: &GestureClick, _number_of_clicks: i32, _b: f64, _c: f64) {
@@ -80,7 +80,7 @@ pub fn opening_double_click_function_directories(gesture_click: &GestureClick, n
     }
 }
 
-pub fn opening_enter_function_ported(event_controller: &gtk4::EventControllerKey, _key: Key, key_code: u32, _modifier_type: ModifierType) -> glib::Propagation {
+pub fn opening_enter_function_ported(event_controller: &gtk4::EventControllerKey, _key: Key, key_code: u32, _modifier_type: ModifierType) -> gtk4::glib::Propagation {
     let tree_view = event_controller
         .widget()
         .expect("Item has no widget")
@@ -99,7 +99,7 @@ pub fn opening_enter_function_ported(event_controller: &gtk4::EventControllerKey
         nt_object.column_selection,
         nt_object.column_header,
     );
-    glib::Propagation::Proceed // True catches signal, and don't send it to function, e.g. up button is caught and don't move selection
+    gtk4::glib::Propagation::Proceed // True catches signal, and don't send it to function, e.g. up button is caught and don't move selection
 }
 
 pub fn opening_double_click_function(gesture_click: &GestureClick, number_of_clicks: i32, _b: f64, _c: f64) {

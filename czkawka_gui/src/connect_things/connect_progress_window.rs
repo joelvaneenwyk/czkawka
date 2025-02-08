@@ -6,7 +6,7 @@ use std::time::Duration;
 use crossbeam_channel::Receiver;
 use czkawka_core::common_dir_traversal::ToolType;
 use czkawka_core::progress_data::{CurrentStage, ProgressData};
-use glib::MainContext;
+use gtk4::glib::MainContext;
 use gtk4::prelude::*;
 use gtk4::ProgressBar;
 

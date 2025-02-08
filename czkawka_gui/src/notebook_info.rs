@@ -1,4 +1,4 @@
-use glib::types::Type;
+use gtk4::glib::types::Type;
 
 use crate::help_functions::{
     BottomButtonsEnum, ColumnsBadExtensions, ColumnsBigFiles, ColumnsBrokenFiles, ColumnsDuplicates, ColumnsEmptyFiles, ColumnsEmptyFolders, ColumnsInvalidSymlinks,

@@ -11,7 +11,7 @@ pub fn connect_button_about(gui_data: &GuiData) {
         // Prevent from deleting dialog after close
         about_dialog.connect_close_request(|dialog| {
             dialog.hide();
-            glib::Propagation::Stop
+            gtk4::glib::Propagation::Stop
         });
     });
 }
