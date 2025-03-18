@@ -29,7 +29,7 @@ bitflags = "2.6"
 lofty = "0.22"
 
 # Needed by broken files
-zip = { version = "2.2", features = ["aes-crypto", "bzip2", "deflate", "time"], default-features = false }
+zip = { version = "2.3", features = ["aes-crypto", "bzip2", "deflate", "time"], default-features = false }
 audio_checker = "0.1"
 pdf = "0.9"
 
