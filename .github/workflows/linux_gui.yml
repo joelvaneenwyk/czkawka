@@ -12,7 +12,7 @@ jobs:
   linux-krokiet-gui:
     runs-on: ubuntu-20.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Setup rust version
         run: rustup default stable
@@ -44,7 +44,7 @@ jobs:
   linux-krokiet-gui-heif:
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Install basic libraries
         run: sudo apt update || true; sudo apt install libheif-dev libraw-dev -y
@@ -79,7 +79,7 @@ jobs:
   linux-gui:
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Install basic libraries
         run: sudo apt update || true; sudo apt install libgtk-4-dev libheif-dev libraw-dev -y
@@ -124,7 +124,7 @@ jobs:
   linux-appimage-gui:
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Install Dependencies
         run: sudo apt update || true; sudo apt install libgtk-4-dev libheif-dev libraw-dev librsvg2-dev wget fuse libfuse2 desktop-file-utils -y
@@ -199,7 +199,7 @@ jobs:
   linux-tests:
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Install Dependencies
         run: sudo apt update || true; sudo apt install libgtk-4-dev libheif-dev libraw-dev librsvg2-dev wget fuse libfuse2 -y xvfb
