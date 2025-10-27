@@ -27,7 +27,7 @@ jobs:
         run: cargo build --release --bin czkawka_cli --features "fast_image_resize"
 
       - name: Store Linux CLI fast_image_resize
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: czkawka_cli-${{ runner.os }}-fast_image_resize
           path: target/release/czkawka_cli
@@ -36,7 +36,7 @@ jobs:
         run: cargo build --release --bin czkawka_cli
 
       - name: Store Linux CLI
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: czkawka_cli-${{ runner.os }}
           path: target/release/czkawka_cli

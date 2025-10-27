@@ -35,7 +35,7 @@ jobs:
         run: cargo build --release --bin czkawka_cli
 
       - name: Store Linux CLI
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: czkawka_cli-${{ runner.os }}
           path: target/release/czkawka_cli

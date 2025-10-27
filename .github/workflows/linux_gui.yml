@@ -24,7 +24,7 @@ jobs:
         run: cargo build --release --bin krokiet
 
       - name: Store Linux GUI Krokiet
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: krokiet-${{ runner.os }}
           path: target/release/krokiet
@@ -59,7 +59,7 @@ jobs:
         run: cargo build --release --bin krokiet --features "heif,libraw"
 
       - name: Store Linux GUI Krokiet heif libraw
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: krokiet-${{ runner.os }}-heif-libraw
           path: target/release/krokiet
@@ -94,7 +94,7 @@ jobs:
         run: cargo build --release --bin czkawka_gui --features "heif,libraw"
 
       - name: Store Linux GUI Heif Libraw
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: czkawka_gui-${{ runner.os }}-heif-libraw
           path: target/release/czkawka_gui
@@ -104,7 +104,7 @@ jobs:
 
       # Only store stable toolchain
       - name: Store Linux GUI
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: czkawka_gui-${{ runner.os }}
           path: target/release/czkawka_gui
@@ -156,13 +156,13 @@ jobs:
             ./AppDir
 
       - name: Store Linux Appimage GUI
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: czkawka_gui-appimage-${{ runner.os }}
           path: Czkawka*.AppImage
 
       - name: Store Linux Appimage GUI Zsync
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: czkawka_gui-appimage-${{ runner.os }}.zsync
           path: Czkawka*.AppImage.zsync
@@ -179,7 +179,7 @@ jobs:
           mv out/Czkawka*.AppImage out/czkawka_gui-minimal.AppImage
 
       - name: Minimal Appimage Upload
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: czkawka_gui_minimal_AppImage
           path: out/*.AppImage
