@@ -33,7 +33,7 @@ jobs:
         run: cargo build --release --target x86_64-pc-windows-gnu --bin krokiet
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: krokiet-windows-c-on-linux-${{ github.sha }}
           path: |
@@ -53,7 +53,7 @@ jobs:
         run: cargo build --release --target x86_64-pc-windows-gnu --bin krokiet
 
       - name: Upload artifacts Console
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: krokiet-windows-c-on-linux-${{ github.sha }}-console
           path: |
@@ -95,7 +95,7 @@ jobs:
         run: cargo build --release --bin krokiet
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: krokiet-windows-c-on-windows-${{ github.sha }}
           path: |
@@ -115,7 +115,7 @@ jobs:
         run: cargo build --release --bin krokiet
 
       - name: Upload artifacts Console
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: krokiet-windows-c-on-windows-${{ github.sha }}-console
           path: |
@@ -184,7 +184,7 @@ jobs:
           rm gtk4_theme.zip
           cd ../..
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: czkawka-windows-${{ github.sha }}-4.10
           path: |
@@ -251,7 +251,7 @@ jobs:
           rm gtk4_theme.zip
           cd ../..
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: czkawka-windows-${{ github.sha }}-4.6
           path: |
@@ -327,7 +327,7 @@ jobs:
           rm gtk4_theme.zip
           cd ../..
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: czkawka-windows-${{ github.sha }}-console-4.6
           path: |
